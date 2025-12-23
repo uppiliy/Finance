@@ -1,0 +1,133 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}Loan History - Sri Uppiliyappa Finance{% endblock %}
+
+{% block container %}
+<div class="app-header">Customer Loan History</div>
+
+<!-- 🔹 Search box inside app card -->
+<div class="app-card p-3 mb-4">
+  <div class="mb-3">
+    <label>Enter Mobile Number</label>
+    <input type="text" id="mobileInput" class="form-control" maxlength="10" placeholder="Enter 10-digit number">
+  </div>
+  <button class="btn btn-gradient w-100" id="searchBtn">🔍 View Loan History</button>
+</div>
+
+<!-- 🔹 Full-width results (outside of card, no container) -->
+<div id="historyResultsWrapper" style="width:100vw; margin-left:calc(50% - 50vw);">
+  <div id="historyResults" class="mt-3 px-2"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+
+  $('#searchBtn').click(function() {
+    const mobile = $('#mobileInput').val().trim();
+    if (mobile.length !== 10) {
+      alert("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
+    $('#historyResults').html("<p class='text-center'>Loading...</p>");
+
+    $.get("{% url 'get_loan_history' %}", { mobile: mobile }, function(data) {
+      if (!data.exists) {
+        $('#historyResults').html(`<div class='alert alert-warning text-center mt-3'>${data.message || 'No customer found.'}</div>`);
+        return;
+      }
+
+      let html = `
+      <div class="mt-4 px-4">
+        <h4>${data.customer_name} <small class="text-muted">(ID: ${data.customer_code})</small></h4>`;
+
+      if (data.loans.length === 0) {
+        html += `<p>No loans found.</p>`;
+      } else {
+        html += `
+        <div class="table-responsive mt-3">
+          <table class="table table-bordered table-hover align-middle text-center" style="background:white; border-radius:8px;">
+            <thead class="table-light">
+              <tr>
+                <th>Loan Code</th>
+                <th>Amount (₹)</th>
+                <th>Type</th>
+                <th>Issued</th>
+                <th>Last Date</th>
+                <th>Collected</th>
+                <th>Remaining</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+        data.loans.forEach(l => {
+          let color = l.status === 'Paid' ? 'green' : l.status === 'Overdue' ? 'red' : 'orange';
+          html += `
+            <tr>
+              <td>${l.loan_code}</td>
+              <td>₹${l.amount.toFixed(2)}</td>
+              <td>${l.repayment_type}</td>
+              <td>${l.date_issued}</td>
+              <td>${l.last_repayment_date}</td>
+              <td>₹${l.total_collected.toFixed(2)}</td>
+              <td>₹${l.remaining_balance.toFixed(2)}</td>
+              <td style="color:${color}; font-weight:bold;">${l.status}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary view-collections" data-loan="${l.loan_code}">
+                  📅 View
+                </button>
+              </td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div>
+        <div id="collectionsBox" class="mt-4"></div>`;
+      }
+
+      html += `</div>`;
+      $('#historyResults').html(html);
+
+      // scroll user to results
+      window.scrollTo({ top: $('#historyResultsWrapper').offset().top - 20, behavior: 'smooth' });
+    }).fail(() => {
+      $('#historyResults').html("<div class='alert alert-danger text-center'>Error fetching data.</div>");
+    });
+  });
+
+  $(document).on('click', '.view-collections', function() {
+    const loanCode = $(this).data('loan');
+    $('#collectionsBox').html(`<p>Loading collections for ${loanCode}...</p>`);
+
+    $.get("{% url 'get_loan_collections' %}", { loan_code: loanCode }, function(data) {
+      if (data.collections.length === 0) {
+        $('#collectionsBox').html(`<div class='alert alert-info'>No collections found for Loan ${loanCode}.</div>`);
+        return;
+      }
+
+      let total = data.collections.reduce((sum, c) => sum + c.amount_collected, 0);
+
+      let html = `
+        <div class="mt-3 px-4">
+          <h6>📅 Collections for Loan ${loanCode}</h6>
+          <p><b>Total Collected:</b> ₹${total.toFixed(2)} (${data.total_entries} entries)</p>
+          <table class="table table-sm table-striped text-center align-middle">
+            <thead><tr><th>Date</th><th>Amount (₹)</th></tr></thead>
+            <tbody>`;
+
+      data.collections.forEach(c => {
+        html += `<tr><td>${c.collection_date}</td><td>₹${c.amount_collected.toFixed(2)}</td></tr>`;
+      });
+
+      html += `</tbody></table></div>`;
+      $('#collectionsBox').html(html);
+    }).fail(() => {
+      $('#collectionsBox').html(`<div class='alert alert-danger'>Error loading collections.</div>`);
+    });
+  });
+
+});
+</script>
+{% endblock %}

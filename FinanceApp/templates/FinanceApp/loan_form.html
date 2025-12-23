@@ -1,0 +1,165 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}New Loan - Sri Uppiliyappa Finance{% endblock %}
+
+{% block content %}
+<div class="app-header">Loan Registration</div>
+<form method="post" id="loanForm">
+  {% csrf_token %}
+
+  <div class="mb-3 position-relative">
+    <label>Mobile Number</label>
+    {{ form.mobile_number }}
+    <div id="customerStatus" class="mt-2 small"></div>
+  </div>
+
+  <div class="mb-3">
+    <label>Customer Name</label>
+    {{ form.customer_name }}
+  </div>
+
+  <div class="mb-3">
+    <label>Loan Amount (₹)</label>
+    {{ form.amount }}
+  </div>
+
+  <div class="mb-3">
+    <label>Repayment Type</label>
+    {{ form.repayment_type }}
+  </div>
+
+  <div class="mb-3">
+    <label>Date Issued</label>
+    {{ form.date_issued }}
+    <div class="mt-2 text-muted">
+      <b>📅 Last Repayment Date:</b> <span id="lastRepayDate">—</span>
+    </div>
+  </div>
+
+  <div class="calc-box">
+    <p><b>Commission %:</b> <span id="commPercent">-</span></p>
+    <p><b>Commission Amount:</b> ₹<span id="commAmount">-</span></p>
+    <p><b>Disbursed Amount:</b> ₹<span id="disbursedAmount">-</span></p>
+    <p><b>Repayment Amount:</b> ₹<span id="repayAmount">-</span> <span id="repayType"></span></p>
+  </div>
+
+  <button type="submit" class="btn btn-gradient w-100 mt-3">💰 Create Loan</button>
+</form>
+
+{% if created_loan %}
+  <div class="card mt-4 text-center p-3 shadow">
+    <h4>🎉 Loan Created Successfully!</h4>
+    <p><b>Loan ID:</b> {{ created_loan.loan_code }}</p>
+    <p><b>Customer:</b> {{ created_loan.customer.name }}</p>
+    <p><b>Amount:</b> ₹{{ created_loan.amount }}</p>
+
+    {% if created_loan.qr_code %}
+      <div class="mt-3">
+        <img src="{{ created_loan.qr_code.url }}" alt="QR Code" width="200" class="rounded border">
+        <br>
+        <a href="{{ created_loan.qr_code.url }}" download class="btn btn-success mt-3">
+          ⬇️ Download QR Code
+        </a>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  // ✅ Live check for existing customer
+  $('#id_mobile_number').on('change blur', function() {
+    const mobile = $(this).val().trim();
+    if (mobile.length === 10) {
+      $.get("{% url 'check_customer' %}", { mobile: mobile }, function(data) {
+        if (data.exists) {
+          let html = `✅ Existing Customer: <b>${data.name}</b> (ID: ${data.code})`;
+
+          if (data.active_loans && data.active_loans.length > 0) {
+            html += `<br><b>📋 Active Loans:</b><ul>`;
+            data.active_loans.forEach(l => {
+              html += `
+                <li>
+                  <b>Loan ${l.loan_code}</b>: ₹${parseFloat(l.amount).toFixed(2)} (${l.repayment_type})
+                  <br>
+                  <small>Issued: ${l.date_issued} | Last: ${l.last_repayment_date}</small><br>
+                  <small>Collected: ₹${parseFloat(l.total_collected || 0).toFixed(2)} | 
+                  <b style="color:#d9534f">Remaining: ₹${parseFloat(l.remaining_balance || 0).toFixed(2)}</b></small>
+                </li>
+              `;
+            });
+            html += `</ul>`;
+          } else {
+            html += `<br><span style="color: gray;">No active loans</span>`;
+          }
+
+          $('#customerStatus').html(html).css('color', 'green');
+          $('#id_customer_name').val(data.name);
+        } else {
+          $('#customerStatus')
+            .html(`🆕 New Customer — will be created.`)
+            .css('color', '#0d6efd');
+        }
+      });
+    } else {
+      $('#customerStatus').text('');
+    }
+  });
+
+  // 💰 Commission + Repayment Calculations
+  function updateCalculations() {
+    let amount = parseFloat($('#id_amount').val()) || 0;
+    let type = $('#id_repayment_type').val();
+    let commPercent = 0;
+
+    if (type === 'daily') commPercent = 12;
+    else if (type === 'weekly') commPercent = 13.5;
+    else if (type === 'monthly') commPercent = 15;
+
+    let commAmount = (amount * commPercent) / 100;
+    let disbursed = amount - commAmount;
+
+    let repay = 0;
+    let repayLabel = '';
+    if (type === 'daily') {
+      repay = amount / 100;
+      repayLabel = '/ Daily';
+    } else if (type === 'weekly') {
+      repay = amount / 14;
+      repayLabel = '/ Weekly';
+    } else if (type === 'monthly') {
+      repay = amount / 4;
+      repayLabel = '/ Monthly (25 Days)';
+    }
+
+    $('#commPercent').text(commPercent ? commPercent.toFixed(1) + '%' : '-');
+    $('#commAmount').text(commAmount ? commAmount.toFixed(2) : '-');
+    $('#disbursedAmount').text(disbursed ? disbursed.toFixed(2) : '-');
+    $('#repayAmount').text(repay ? repay.toFixed(2) : '-');
+    $('#repayType').text(repayLabel);
+  }
+
+  // 📅 Update last repayment date
+  function updateRepaymentDate() {
+    const issuedDate = $('#id_date_issued').val();
+    if (!issuedDate) {
+      $('#lastRepayDate').text('—');
+      return;
+    }
+    const date = new Date(issuedDate);
+    date.setDate(date.getDate() + 101); // next day + 100 days
+    const formatted = date.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: '2-digit' });
+    $('#lastRepayDate').text(formatted);
+  }
+
+  $('#id_amount, #id_repayment_type').on('input change', updateCalculations);
+  $('#id_date_issued').on('change', updateRepaymentDate);
+
+  updateCalculations();
+  updateRepaymentDate();
+});
+
+</script>
+{% endblock %}

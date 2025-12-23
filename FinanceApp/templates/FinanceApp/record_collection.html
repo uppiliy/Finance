@@ -1,0 +1,206 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}Loan Collection{% endblock %}
+
+{% block content %}
+<div class="app-header">💰 Loan Collection</div>
+
+<form id="collection-form" method="POST">
+  {% csrf_token %}
+
+  
+
+  <!-- LOAN CODE FIELD -->
+  <div class="mb-3">
+    <label class="form-label">Loan Code</label>
+    <input type="text" id="id_loan_code" name="loan_code"
+           class="form-control" placeholder="Enter or Scan Loan Code">
+    <small id="loan-error" class="text-danger"></small>
+  </div>
+
+  <!-- SCAN BUTTON -->
+  <div class="text-center mb-3">
+    <button type="button" id="open-scan" class="btn btn-primary w-100">
+      Scan QR Code
+    </button>
+  </div>
+
+  <!-- CAMERA VIEW (hidden initially) -->
+  <div id="scanner-box" style="display:none;" class="text-center mb-3">
+    <video id="camera" width="100%" style="max-width:400px; border-radius:10px; background:#000;" autoplay></video>
+    <canvas id="canvas" hidden></canvas>
+    <div id="qr-result" class="mt-2 fw-bold text-success"></div>
+
+    <button type="button" id="close-scan" class="btn btn-secondary mt-2">
+      ✖ Stop Scanning
+    </button>
+  </div>
+
+
+  <!-- CUSTOMER INFO -->
+  <div id="customer-info" style="display:none;">
+    <ul class="list-group mb-3 small">
+      <li class="list-group-item"><strong>Name:</strong> <span id="cust-name"></span></li>
+      <li class="list-group-item"><strong>Mobile:</strong> <span id="cust-mobile"></span></li>
+      <li class="list-group-item"><strong>Loan Amount:</strong> ₹<span id="cust-amount"></span></li>
+      <li class="list-group-item"><strong>Total Collected:</strong> ₹<span id="cust-collected"></span></li>
+      <li class="list-group-item"><strong>Remaining:</strong> ₹<span id="cust-remaining"></span></li>
+      <li class="list-group-item"><strong>Repay:</strong> ₹<span id="cust-daily"></span></li>
+    </ul>
+
+    <div class="mb-3">
+      <label class="form-label">Today's Collection (₹)</label>
+      <input type="number" id="id_amount_collected" name="amount_collected"
+             class="form-control" min="0">
+    </div>
+
+    <button type="submit" class="btn btn-gradient w-100">Record Collection</button>
+  </div>
+</form>
+
+<div id="collect-message" class="mt-3 text-center fw-bold"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+$(document).ready(function(){
+  let currentLoan = null;
+  let scanning = false;
+  let stream = null;
+
+  const video = document.getElementById("camera");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  // --------------------------
+  //  CAMERA HANDLING
+  // --------------------------
+  async function startCamera() {
+    $("#scanner-box").show();
+    $("#qr-result").text("");
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } }
+      });
+      video.srcObject = stream;
+      video.play();
+      scanning = true;
+      scanFrame();
+    } catch (err) {
+      alert("Camera access failed. Check HTTPS or permissions.");
+    }
+  }
+
+  function stopCamera() {
+    scanning = false;
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    $("#scanner-box").hide();
+  }
+
+  function scanFrame() {
+    if (!scanning) return;
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const qr = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (qr) {
+        stopCamera();
+        $("#qr-result").html(`✅ Scanned: <strong>${qr.data}</strong>`);
+        $("#id_loan_code").val(qr.data);
+        fetchLoanDetails(qr.data);
+        return;
+      }
+    }
+
+    requestAnimationFrame(scanFrame);
+  }
+
+  $("#open-scan").click(startCamera);
+  $("#close-scan").click(stopCamera);
+
+  // --------------------------
+  //  FETCH CUSTOMER DETAILS
+  // --------------------------
+  function fetchLoanDetails(code) {
+    $.get("{% url 'get_customer_details' %}", { loan_code: code }, function(data){
+      if (data.found) {
+        currentLoan = code;
+        $("#loan-error").text("");
+        $("#customer-info").show();
+
+        $("#cust-name").text(data.name);
+        $("#cust-mobile").text(data.mobile_number);
+        $("#cust-amount").text(data.amount.toFixed(2));
+        $("#cust-collected").text(data.total_collected.toFixed(2));
+        $("#cust-remaining").text(data.remaining_balance.toFixed(2));
+        $("#cust-daily").text(data.daily_amount.toFixed(2));
+        $("#id_amount_collected").val(data.daily_amount.toFixed(2));
+      } else {
+        $("#customer-info").hide();
+        $("#loan-error").text("❌ Invalid Loan Code");
+        currentLoan = null;
+      }
+    });
+  }
+
+  // Manual enter + press Enter to fetch
+  $("#id_loan_code").on("keydown", function(e){
+    if (e.key === "Enter") {
+      e.preventDefault();
+      let code = $(this).val().trim();
+      if (code) fetchLoanDetails(code);
+    }
+  });
+
+  // --------------------------
+  //  SUBMIT COLLECTION
+  // --------------------------
+  $("#collection-form").submit(function(e){
+    e.preventDefault();
+
+    if (!currentLoan) {
+      $("#collect-message").text("❌ Scan or enter a valid Loan Code").css("color", "red");
+      return;
+    }
+
+    let amount = $("#id_amount_collected").val();
+    if (amount <= 0) {
+      $("#collect-message").text("❌ Enter a valid amount").css("color", "red");
+      return;
+    }
+
+    $.post("{% url 'record_collection' %}", {
+      loan_code: currentLoan,
+      amount_collected: amount,
+      csrfmiddlewaretoken: $("input[name='csrfmiddlewaretoken']").val()
+    }, function(response){
+      if (response.success) {
+        $("#collect-message").html(`<span style='color:green;'>${response.message}</span>`);
+        $("#cust-collected").text(response.total_collected.toFixed(2));
+        $("#cust-remaining").text(response.remaining_balance.toFixed(2));
+
+        setTimeout(() => {
+          $("#customer-info").hide();
+          $("#collect-message").text("");
+          $("#id_loan_code").val("");
+          $("#id_amount_collected").val("");
+          currentLoan = null;
+        }, 3000);
+      } else {
+        $("#collect-message").text(response.message).css("color", "red");
+      }
+    });
+  });
+
+});
+</script>
+{% endblock %}

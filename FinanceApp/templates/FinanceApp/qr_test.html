@@ -1,0 +1,86 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}QR Code Scanner Test{% endblock %}
+
+{% block content %}
+<div class="app-header">📷 QR Code Scanner Test</div>
+
+<div class="text-center">
+  <video id="camera" width="100%" style="max-width:400px; border-radius:10px; background:#000;" autoplay></video>
+  <canvas id="canvas" hidden></canvas>
+
+  <div id="qr-result" class="mt-4 fw-bold text-success" style="font-size:1.1rem;"></div>
+  <button id="restart-scan" class="btn btn-gradient mt-3" style="display:none;">Scan Again</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const video = document.getElementById("camera");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const result = document.getElementById("qr-result");
+  const restartBtn = document.getElementById("restart-scan");
+  let scanning = false;
+  let stream = null;
+
+  async function startCamera() {
+    result.textContent = "";
+    restartBtn.style.display = "none";
+
+    try {
+      // Prefer rear camera
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } }
+      });
+      video.srcObject = stream;
+      video.setAttribute("playsinline", true); // iOS compatibility
+      await video.play();
+      scanning = true;
+      scanFrame();
+    } catch (err) {
+      console.error("Camera error:", err);
+      result.textContent = "⚠️ Unable to access camera. Please check permissions or use HTTPS.";
+      result.style.color = "red";
+    }
+  }
+
+  function stopCamera() {
+    scanning = false;
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+  }
+
+  function scanFrame() {
+    if (!scanning) return;
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert",
+      });
+
+      if (qrCode) {
+        stopCamera();
+        result.innerHTML = `✅ QR Code detected: <br><strong>${qrCode.data}</strong>`;
+        result.style.color = "green";
+        restartBtn.style.display = "inline-block";
+        return;
+      }
+    }
+
+    requestAnimationFrame(scanFrame);
+  }
+
+  restartBtn.addEventListener("click", startCamera);
+
+  startCamera();
+});
+</script>
+{% endblock %}

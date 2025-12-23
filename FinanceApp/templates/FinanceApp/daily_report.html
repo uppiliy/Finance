@@ -1,0 +1,62 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}Daily Collection Report{% endblock %}
+
+{% block container %}
+<div class="container mt-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold text-gradient">📅 Daily Collection Report</h4>
+    <form method="get" class="d-flex">
+      <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="form-control me-2" />
+      <button type="submit" class="btn btn-gradient">View</button>
+    </form>
+  </div>
+
+  {% if collections %}
+  <div class="alert alert-success fw-bold text-center shadow-sm rounded-3">
+    💰 Total Collected on <span class="text-primary">{{ selected_date|date:"d M Y" }}</span>:
+    <span class="text-success">₹{{ total_collected|floatformat:2 }}</span>
+  </div>
+  {% endif %}
+
+  <div class="table-responsive shadow-sm rounded-3">
+    <table class="table table-bordered table-hover align-middle text-center">
+      <thead class="table-primary">
+        <tr>
+          <th>#</th>
+          <th>Loan Code</th>
+          <th>Customer Name</th>
+          <th>Mobile Number</th>
+          <th>Amount (₹)</th>
+          <th>Collected At</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in collections %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td class="fw-bold">{{ c.loan.loan_code }}</td>
+          <td>{{ c.loan.customer.name }}</td>
+          <td>{{ c.loan.customer.mobile_number }}</td>
+          <td class="text-success fw-semibold">₹{{ c.amount_collected|floatformat:2 }}</td>
+          <td>{{ c.collection_date|date:"d M Y, h:i A" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-muted py-3">No collections found for this date.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+      {% if collections %}
+      <tfoot class="fw-bold table-light">
+        <tr>
+          <td colspan="4" class="text-end">Total Collected:</td>
+          <td colspan="2" class="text-success">₹{{ total_collected|floatformat:2 }}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}
