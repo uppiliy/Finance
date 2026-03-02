@@ -42,6 +42,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -79,8 +80,7 @@ import dj_database_url
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='sqlite:///' + str(BASE_DIR / 'db.sqlite3'),
-        conn_max_age=600
+        default=os.environ.get('DATABASE_URL')
     )
 }
 
@@ -137,3 +137,6 @@ CSRF_TRUSTED_ORIGINS = [
     # Example for a local/other domain if you have one
     # 'http://127.0.0.1:8000',
 ]
+
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
