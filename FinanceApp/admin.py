@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, Loan, Collection
+from .models import Customer, Loan, Collection, CashTransaction, LoanDisbursement
 from django.utils.html import mark_safe
 
 
@@ -62,3 +62,40 @@ class CollectionAdmin(admin.ModelAdmin):
     def get_customer_name(self, obj):
         return obj.loan.customer.name
     get_customer_name.short_description = 'Customer'
+
+@admin.register(CashTransaction)
+class CashTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'created_at',
+        'direction',
+        'txn_type',
+        'amount',
+        'reference',
+    )
+
+    list_filter = ('direction', 'txn_type', 'created_at')
+    search_fields = ('reference',)
+    ordering = ('-created_at',)
+
+@admin.register(LoanDisbursement)
+class LoanDisbursementAdmin(admin.ModelAdmin):
+    list_display = (
+        'loan',
+        'principal_amount',
+        'commission_percent',
+        'commission_amount',
+        'disbursed_amount',
+        'created_at',
+    )
+
+    list_filter = ('created_at',)
+    search_fields = ('loan__loan_code', 'loan__customer__name')
+
+    readonly_fields = (
+        'commission_amount',
+        'disbursed_amount',
+        'created_at',
+    )
+
+    ordering = ('-created_at',)

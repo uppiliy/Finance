@@ -16,7 +16,15 @@ urlpatterns = [
     path('get-loan-history/', views.get_loan_history, name='get_loan_history'),
     path('get-loan-collections/', views.get_loan_collections, name='get_loan_collections'),
     # in urls.py
-    path("qr-test/", lambda r: render(r, "FinanceApp/qr_test.html"), name="qr_test")
+    path("qr-test/", lambda r: render(r, "FinanceApp/qr_test.html"), name="qr_test"),
+
+
+    path("cash-dashboard/", views.cash_dashboard, name="cash_dashboard"),
+    path('add-capital/', views.add_capital, name='add_capital'),
+    path('add-expense/', views.add_expense, name='add_expense'),
+    path('cash-passbook/', views.cash_passbook, name='cash_passbook'),
+    path('extend-loan/', views.extend_loan, name='extend_loan'),
+
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

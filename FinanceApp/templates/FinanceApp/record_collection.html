@@ -48,6 +48,24 @@
     </ul>
 
     <div class="mb-3">
+      <label class="form-label">Collection Date</label>
+      <input type="date"
+            id="id_collection_date"
+            name="collection_date"
+            class="form-control"
+            value="{{ today|default:'' }}">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Payment Mode</label>
+      <select id="id_payment_mode" name="payment_mode" class="form-control">
+        <option value="cash" selected>Cash</option>
+        <option value="upi">UPI / Bank</option>
+      </select>
+    </div>
+
+
+    <div class="mb-3">
       <label class="form-label">Today's Collection (₹)</label>
       <input type="number" id="id_amount_collected" name="amount_collected"
              class="form-control" min="0">
@@ -65,6 +83,9 @@
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
 $(document).ready(function(){
+    // ✅ Default collection date = today
+  $("#id_collection_date").val(new Date().toISOString().split('T')[0]);
+
   let currentLoan = null;
   let scanning = false;
   let stream = null;
@@ -181,12 +202,16 @@ $(document).ready(function(){
     $.post("{% url 'record_collection' %}", {
       loan_code: currentLoan,
       amount_collected: amount,
+      collection_date: $("#id_collection_date").val(),
+      payment_mode: $("#id_payment_mode").val(),
       csrfmiddlewaretoken: $("input[name='csrfmiddlewaretoken']").val()
     }, function(response){
       if (response.success) {
         $("#collect-message").html(`<span style='color:green;'>${response.message}</span>`);
         $("#cust-collected").text(response.total_collected.toFixed(2));
         $("#cust-remaining").text(response.remaining_balance.toFixed(2));
+
+        $("#id_collection_date").val(new Date().toISOString().split('T')[0]);
 
         setTimeout(() => {
           $("#customer-info").hide();
@@ -204,3 +229,4 @@ $(document).ready(function(){
 });
 </script>
 {% endblock %}
+

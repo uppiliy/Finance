@@ -13,16 +13,50 @@
   <button class="btn btn-gradient w-100" id="searchBtn">🔍 View Loan History</button>
 </div>
 
-<!-- 🔹 Full-width results (outside of card, no container) -->
+<!-- 🔹 Full-width results -->
 <div id="historyResultsWrapper" style="width:100vw; margin-left:calc(50% - 50vw);">
   <div id="historyResults" class="mt-3 px-2"></div>
 </div>
+
+<!-- 🔹 Extend Loan Modal -->
+<div class="modal fade" id="extendLoanModal" tabindex="-1" aria-labelledby="extendLoanLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="extendLoanLabel">Extend Loan <span id="modalLoanCode"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="originalLoanCode">
+        <div class="mb-3">
+          <label>Additional Amount</label>
+          <input type="number" id="addAmount" class="form-control" placeholder="Enter amount" required>
+        </div>
+        <div class="mb-3">
+          <label>Commission (%)</label>
+          <input type="number" id="addCommissionPercent" class="form-control" placeholder="Enter commission %" required>
+        </div>
+        <div class="mb-3">
+          <label>Extension Date</label>
+          <input type="date" id="extendDate" class="form-control">
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="extendLoanBtn">Extend</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
 $(document).ready(function() {
 
+  // 🔹 Fetch loan history
   $('#searchBtn').click(function() {
     const mobile = $('#mobileInput').val().trim();
     if (mobile.length !== 10) {
@@ -38,15 +72,13 @@ $(document).ready(function() {
         return;
       }
 
-      let html = `
-      <div class="mt-4 px-4">
+      let html = `<div class="mt-4 px-4">
         <h4>${data.customer_name} <small class="text-muted">(ID: ${data.customer_code})</small></h4>`;
 
       if (data.loans.length === 0) {
         html += `<p>No loans found.</p>`;
       } else {
-        html += `
-        <div class="table-responsive mt-3">
+        html += `<div class="table-responsive mt-3">
           <table class="table table-bordered table-hover align-middle text-center" style="background:white; border-radius:8px;">
             <thead class="table-light">
               <tr>
@@ -66,37 +98,70 @@ $(document).ready(function() {
         data.loans.forEach(l => {
           let color = l.status === 'Paid' ? 'green' : l.status === 'Overdue' ? 'red' : 'orange';
           html += `
-            <tr>
-              <td>${l.loan_code}</td>
-              <td>₹${l.amount.toFixed(2)}</td>
-              <td>${l.repayment_type}</td>
-              <td>${l.date_issued}</td>
-              <td>${l.last_repayment_date}</td>
-              <td>₹${l.total_collected.toFixed(2)}</td>
-              <td>₹${l.remaining_balance.toFixed(2)}</td>
-              <td style="color:${color}; font-weight:bold;">${l.status}</td>
-              <td>
-                <button class="btn btn-sm btn-outline-primary view-collections" data-loan="${l.loan_code}">
-                  📅 View
-                </button>
-              </td>
-            </tr>`;
+        <tr>
+          <td>
+            <button class="btn btn-sm btn-link toggle-disb"
+              data-target="disb-${l.loan_code}">
+              ➕ ${l.loan_code}
+            </button>
+          </td>
+          <td>₹${l.total_principal.toFixed(2)}</td>
+          <td>${l.repayment_type}</td>
+          <td>${l.date_issued}</td>
+          <td>${l.last_repayment_date}</td>
+          <td>₹${l.total_collected.toFixed(2)}</td>
+          <td>₹${l.remaining_balance.toFixed(2)}</td>
+          <td style="color:${color}; font-weight:bold;">${l.status}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary view-collections"
+              data-loan="${l.loan_code}">📅 View</button>
+            <button class="btn btn-sm btn-outline-success extend-loan"
+              data-loan="${l.loan_code}">➕ Extend</button>
+          </td>
+        </tr>
+
+        <tr id="disb-${l.loan_code}" class="disb-row" style="display:none;">
+          <td colspan="9">
+            <table class="table table-sm table-bordered mt-2">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Principal (₹)</th>
+                  <th>Commission (₹)</th>
+                  <th>Disbursed (₹)</th>
+                  <th>Collected Till Then (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${l.disbursements.map(d => `
+                  <tr>
+                    <td>${d.date}</td>
+                    <td>₹${d.principal.toFixed(2)}</td>
+                    <td>₹${d.commission.toFixed(2)}</td>
+                    <td>₹${d.disbursed.toFixed(2)}</td>
+                    <td class="text-success fw-bold">
+                      ₹${d.collected_till_now.toFixed(2)}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        `;
+
         });
 
-        html += `</tbody></table></div>
-        <div id="collectionsBox" class="mt-4"></div>`;
+        html += `</tbody></table></div><div id="collectionsBox" class="mt-4"></div>`;
       }
 
       html += `</div>`;
       $('#historyResults').html(html);
-
-      // scroll user to results
       window.scrollTo({ top: $('#historyResultsWrapper').offset().top - 20, behavior: 'smooth' });
-    }).fail(() => {
-      $('#historyResults').html("<div class='alert alert-danger text-center'>Error fetching data.</div>");
     });
   });
 
+  // 🔹 View collections
   $(document).on('click', '.view-collections', function() {
     const loanCode = $(this).data('loan');
     $('#collectionsBox').html(`<p>Loading collections for ${loanCode}...</p>`);
@@ -108,26 +173,76 @@ $(document).ready(function() {
       }
 
       let total = data.collections.reduce((sum, c) => sum + c.amount_collected, 0);
-
-      let html = `
-        <div class="mt-3 px-4">
+      let html = `<div class="mt-3 px-4">
           <h6>📅 Collections for Loan ${loanCode}</h6>
           <p><b>Total Collected:</b> ₹${total.toFixed(2)} (${data.total_entries} entries)</p>
           <table class="table table-sm table-striped text-center align-middle">
             <thead><tr><th>Date</th><th>Amount (₹)</th></tr></thead>
             <tbody>`;
-
       data.collections.forEach(c => {
         html += `<tr><td>${c.collection_date}</td><td>₹${c.amount_collected.toFixed(2)}</td></tr>`;
       });
-
       html += `</tbody></table></div>`;
       $('#collectionsBox').html(html);
-    }).fail(() => {
-      $('#collectionsBox').html(`<div class='alert alert-danger'>Error loading collections.</div>`);
+    });
+  });
+
+  // 🔹 Open Extend Loan modal
+  $(document).on('click', '.extend-loan', function() {
+    const loanCode = $(this).data('loan');
+    $('#originalLoanCode').val(loanCode);
+    $('#modalLoanCode').text(loanCode);
+    $('#addAmount').val('');
+    $('#addCommissionPercent').val('');
+    const modal = new bootstrap.Modal(document.getElementById('extendLoanModal'));
+    modal.show();
+  });
+
+  // 🔹 Submit extend loan
+  $('#extendLoanBtn').click(function() {
+    const loanCode = $('#originalLoanCode').val();
+    const addAmount = $('#addAmount').val();
+    const commissionPercent = $('#addCommissionPercent').val();
+
+    if (!addAmount || !commissionPercent) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    const extendDate = $('#extendDate').val();
+
+    $.post("{% url 'extend_loan' %}", {
+      loan_code: loanCode,
+      add_amount: addAmount,
+      commission_percent: commissionPercent,
+      extend_date: extendDate || '',             // ⭐ SAFE
+      csrfmiddlewaretoken: '{{ csrf_token }}'
+    }, function(data) {
+      if (data.success) {
+        alert(data.message);
+        $('#extendLoanModal').modal('hide');
+        $('#searchBtn').click();  // refresh loan history
+      } else {
+        alert(data.message);
+      }
     });
   });
 
 });
+
+// 🔽 Toggle disbursements
+$(document).on('click', '.toggle-disb', function () {
+  const target = $(this).data('target');
+  const row = $('#' + target);
+
+  if (row.is(':visible')) {
+    row.hide();
+    $(this).text('➕ ' + $(this).text().slice(2));
+  } else {
+    row.show();
+    $(this).text('➖ ' + $(this).text().slice(2));
+  }
+});
+
 </script>
 {% endblock %}

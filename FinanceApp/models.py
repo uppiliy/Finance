@@ -3,6 +3,9 @@ from django.core.validators import RegexValidator
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
+from django.db.models import Sum
+from datetime import datetime
+
 
 import qrcode
 from io import BytesIO
@@ -64,7 +67,9 @@ class Loan(models.Model):
 
 
     def save(self, *args, **kwargs):
-        # Generate Loan Code (sequential, not tied to ID)
+        is_new = self.pk is None  # ✅ detect first creation
+
+        # 🔢 Loan Code
         if not self.loan_code:
             last_loan = Loan.objects.order_by('-loan_code').first()
             if last_loan and last_loan.loan_code.isdigit():
@@ -73,37 +78,48 @@ class Loan(models.Model):
                 next_number = 1
             self.loan_code = f"{next_number:04d}"
 
-        # Commission by repayment type
-        if self.repayment_type == 'daily':
-            self.commission_percent = Decimal('12.0')
-        elif self.repayment_type == 'weekly':
-            self.commission_percent = Decimal('13.5')
-        elif self.repayment_type == 'monthly':
-            self.commission_percent = Decimal('15.0')
-
-        # Commission + Disbursed Amount
-        if self.amount:
-            self.commission_amount = (self.amount * self.commission_percent) / Decimal('100')
-            self.disbursed_amount = self.amount - self.commission_amount
-
-            # Repayment logic
+        # 💰 Commission %
+        if self.commission_percent is None:
             if self.repayment_type == 'daily':
-                self.repayment_amount = self.amount / 100
+                self.commission_percent = Decimal('12.0')
             elif self.repayment_type == 'weekly':
-                self.repayment_amount = self.amount / 14
+                self.commission_percent = Decimal('13.5')
             elif self.repayment_type == 'monthly':
-                self.repayment_amount = self.amount / 4
+                self.commission_percent = Decimal('15.0')
+            else:
+                self.commission_percent = Decimal('0')
 
-        # 🔥 Set Last Repayment Date = date_issued + 100 days (starting tomorrow)
+        # 💸 Amount calculations
+        self.commission_amount = (self.amount * self.commission_percent) / Decimal('100')
+        self.disbursed_amount = self.amount - self.commission_amount
+
+        # 📆 Repayment amount
+        if self.repayment_type == 'daily':
+            self.repayment_amount = self.amount / 100
+        elif self.repayment_type == 'weekly':
+            self.repayment_amount = self.amount / 14
+        elif self.repayment_type == 'monthly':
+            self.repayment_amount = self.amount / 4
+
+        # 📅 Last repayment date
         if self.date_issued:
             self.last_repayment_date = self.date_issued + timedelta(days=101)
 
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # 🚨 MUST SAVE FIRST
 
-         # ✅ Generate QR Code only if not already created
+        # 🧾 Generate QR only once
         if not self.qr_code:
             self.generate_qr_code()
 
+        '''# 💸 CASH FLOW (ONLY ON CREATE)
+        if is_new:
+            CashTransaction.objects.create(
+                amount=self.disbursed_amount,
+                direction="debit",
+                txn_type="loan_disbursement",
+                reference=f"Loan {self.loan_code}"
+            )'''
+        
     def generate_qr_code(self):
         """Generates and saves a unique QR code for this loan."""
         '''qr_content = self.loan_code
@@ -175,18 +191,178 @@ class Loan(models.Model):
 
         self.qr_code.save(file_name, File(buffer), save=False)
         super().save(update_fields=["qr_code"])
-            
-        def __str__(self):
-            return f"Loan {self.loan_code} - {self.customer.name}"
+
+    @property
+    def total_principal(self):
+        return self.disbursements.aggregate(
+            total=Sum('principal_amount')
+        )['total'] or Decimal('0')
+
+    @property
+    def total_commission(self):
+        return self.disbursements.aggregate(
+            total=Sum('commission_amount')
+        )['total'] or Decimal('0')
+
+    @property
+    def total_disbursed(self):
+        return self.disbursements.aggregate(
+            total=Sum('disbursed_amount')
+        )['total'] or Decimal('0')
+
+    @property
+    def total_collected(self):
+        return self.collections.aggregate(
+            total=Sum('amount_collected')
+        )['total'] or Decimal('0')
+
+    @property
+    def remaining_balance(self):
+        return self.total_principal - self.total_collected
+
+    def __str__(self):
+        return f"Loan {self.loan_code} - {self.customer.name}"
     
 from django.db import models
 from django.utils import timezone
 
-class Collection(models.Model):    
-    loan = models.ForeignKey('Loan', on_delete=models.CASCADE, related_name='collections')
+class Collection(models.Model):
+    PAYMENT_MODES = [
+        ('cash', 'Cash'),
+        ('upi', 'UPI / Bank'),
+    ]
+
+    loan = models.ForeignKey(
+        'Loan',
+        on_delete=models.CASCADE,
+        related_name='collections'
+    )
     collection_date = models.DateTimeField(default=timezone.now)
     amount_collected = models.DecimalField(max_digits=10, decimal_places=2)
 
-    def __str__(self):
-        return f"{self.loan.loan_code} - {self.collection_date} - ₹{self.amount_collected}"
+    payment_mode = models.CharField(
+        max_length=10,
+        choices=PAYMENT_MODES,
+        default='cash'
+    )
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None  # ✅ detect first save
+
+        super().save(*args, **kwargs)
+
+        if is_new:
+            from FinanceApp.models import CashTransaction
+
+            CashTransaction.objects.create(
+                amount=self.amount_collected,
+                direction="credit",
+                txn_type="collection",
+                payment_mode=self.payment_mode,
+                reference=f"Loan {self.loan.loan_code} - {self.loan.customer.name}",
+                txn_date=self.collection_date
+            )
+
+    def __str__(self):
+        return f"{self.loan.loan_code} - ₹{self.amount_collected}"
+
+
+class CashTransaction(models.Model):
+    CREDIT = 'credit'
+    DEBIT = 'debit'
+
+    DIRECTION_CHOICES = [
+        (CREDIT, 'Credit'),
+        (DEBIT, 'Debit'),
+    ]
+
+    TYPE_CHOICES = [
+        ('capital', 'Capital In'),
+        ('loan_disbursement', 'Loan Disbursement'),
+        ('commission', 'Commission'),
+        ('collection', 'Collection'),
+        ('expense', 'Expense'),
+    ]
+
+    PAYMENT_MODES = [
+        ('cash', 'Cash'),
+        ('upi', 'UPI / Bank'),
+    ]
+
+    payment_mode = models.CharField(
+        max_length=10,
+        choices=PAYMENT_MODES,
+        default='cash'
+    )
+
+
+    direction = models.CharField(
+        max_length=6,
+        choices=DIRECTION_CHOICES,
+        default=CREDIT
+    )
+
+    txn_type = models.CharField(
+        max_length=30,
+        choices=TYPE_CHOICES,
+        default='capital'
+    )
+
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    reference = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # ✅ USER SELECTABLE DATE (default = now)
+    txn_date = models.DateTimeField(default=timezone.now)
+
+
+    def __str__(self):
+        sign = "+" if self.direction == "credit" else "-"
+        return f"{sign}₹{self.amount} ({self.txn_type})"
+
+
+class LoanDisbursement(models.Model):
+    loan = models.ForeignKey(
+        Loan,
+        on_delete=models.CASCADE,
+        related_name='disbursements'
+    )
+
+    principal_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    commission_percent = models.DecimalField(max_digits=5, decimal_places=2)
+    commission_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    disbursed_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    # 🔥 SNAPSHOT FIELD
+    collected_till_now = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0
+    )
+
+    # 🔥 BUSINESS DATE (editable / backdatable / future-proof)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+
+        # Commission calculation (same logic as Loan.save)
+        self.commission_amount = (
+            self.principal_amount * self.commission_percent / Decimal('100')
+        )
+        self.disbursed_amount = self.principal_amount - self.commission_amount
+
+        super().save(*args, **kwargs)
+
+        # Cash ledger entries (ONLY once)
+        if is_new:
+            from FinanceApp.models import CashTransaction
+
+            # Debit: money given to customer
+            CashTransaction.objects.create(
+                amount=self.disbursed_amount,
+                direction="debit",
+                txn_type="loan_disbursement",
+                reference=f"Loan {self.loan.loan_code}  - {self.loan.customer.name}",
+                txn_date=self.created_at
+            )

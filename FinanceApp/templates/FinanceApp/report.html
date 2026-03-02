@@ -42,13 +42,19 @@
             <td>{{ loan.loan_code }}</td>
             <td>{{ loan.customer.name }}</td>
             <td>{{ loan.customer.mobile_number }}</td>
-            <td>{{ loan.amount|floatformat:2 }}</td>
-            <td>{{ loan.commission_amount|floatformat:2 }}</td>
-            <td>{{ loan.disbursed_amount|floatformat:2 }}</td>
+            <td>{{ loan.total_principal|floatformat:2 }}</td>
+            <td>{{ loan.total_commission|floatformat:2 }}</td>
+            <td>{{ loan.total_disbursed|floatformat:2 }}</td>
             <td class="text-success fw-bold">{{ loan.total_collected|floatformat:2 }}</td>
             <td class="text-danger fw-bold">{{ loan.remaining_balance|floatformat:2 }}</td>
             <td>{{ loan.date_issued|date:"d M Y" }}</td>
-            <td>{{ loan.last_repayment_date|date:"d M Y" }}</td>
+            <td>
+              {% if loan.last_repayment_date %}
+                {{ loan.last_repayment_date|date:"d M Y" }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
             <td>
               {% if loan.is_paid %}
                 <span class="badge bg-success">✅ Paid</span>

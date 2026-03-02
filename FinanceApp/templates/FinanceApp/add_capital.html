@@ -1,0 +1,12 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}Add Capital - Sri Uppiliyappa Finance{% endblock %}
+
+{% block content %}
+<div class="app-header">💰 Add Capital</div>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-gradient w-100 mt-3">Record Capital</button>
+</form>
+{% endblock %}

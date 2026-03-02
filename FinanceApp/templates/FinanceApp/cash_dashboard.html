@@ -1,0 +1,126 @@
+{% extends "FinanceApp/base.html" %}
+
+{% block content %}
+<h4 class="text-center mb-3">💼 Cash Dashboard</h4>
+
+<!-- =====================
+     TOP SUMMARY
+===================== -->
+<div class="row mb-4 text-center">
+  <div class="col-md-3 col-6 mb-2">
+    <div class="card shadow-sm">
+      <div class="card-body p-2">
+        <small>Total Capital</small>
+        <h6 class="text-success mb-0">₹{{ total_capital }}</h6>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 col-6 mb-2">
+    <div class="card shadow-sm">
+      <div class="card-body p-2">
+        <small>Total Collection</small>
+        <h6 class="text-primary mb-0">₹{{ total_collection }}</h6>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 col-6 mb-2">
+    <div class="card shadow-sm">
+      <div class="card-body p-2">
+        <small>Total Expense</small>
+        <h6 class="text-danger mb-0">₹{{ total_expense }}</h6>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 col-6 mb-2">
+    <div class="card shadow-sm border-primary">
+      <div class="card-body p-2">
+        <small>Total Balance</small>
+        <h6 class="fw-bold mb-0">₹{{ total_balance }}</h6>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================
+     CASH vs BANK
+===================== -->
+<div class="row mb-4">
+  <!-- CASH -->
+  <div class="col-md-6 mb-3">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">💵 Cash</div>
+      <div class="card-body p-2">
+        <div class="d-flex justify-content-between mb-1">
+          <span>In Hand</span>
+          <strong>₹{{ cash_in_hand }}</strong>
+        </div>
+        <small class="text-success">Credit: ₹{{ cash_credit }}</small><br>
+        <small class="text-danger">Debit: ₹{{ cash_debit }}</small>
+
+        <!-- Cash Breakdown -->
+        <button class="btn btn-sm btn-outline-secondary w-100 mt-2"
+                data-bs-toggle="collapse"
+                data-bs-target="#cashBreakdown">
+          View Cash Breakdown
+        </button>
+
+        <div class="collapse mt-2" id="cashBreakdown">
+          <ul class="list-group small">
+            {% for row in breakdown %}
+              {% if row.payment_mode == "cash" %}
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                  <span class="text-truncate me-2" style="max-width:70%;">
+                    {{ row.txn_type|title }}
+                  </span>
+                  <span class="fw-semibold">₹{{ row.total }}</span>
+                </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BANK -->
+  <div class="col-md-6 mb-3">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">🏦 Bank / UPI</div>
+      <div class="card-body p-2">
+        <div class="d-flex justify-content-between mb-1">
+          <span>Balance</span>
+          <strong>₹{{ bank_balance }}</strong>
+        </div>
+        <small class="text-success">Credit: ₹{{ bank_credit }}</small><br>
+        <small class="text-danger">Debit: ₹{{ bank_debit }}</small>
+
+        <!-- Bank Breakdown -->
+        <button class="btn btn-sm btn-outline-secondary w-100 mt-2"
+                data-bs-toggle="collapse"
+                data-bs-target="#bankBreakdown">
+          View Bank Breakdown
+        </button>
+
+        <div class="collapse mt-2" id="bankBreakdown">
+          <ul class="list-group small">
+            {% for row in breakdown %}
+              {% if row.payment_mode == "upi" %}
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                  <span class="text-truncate me-2" style="max-width:70%;">
+                    {{ row.txn_type|title }}
+                  </span>
+                  <span class="fw-semibold">₹{{ row.total }}</span>
+                </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

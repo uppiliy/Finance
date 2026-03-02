@@ -28,6 +28,13 @@
   </div>
 
   <div class="mb-3">
+    <label>Commission %</label>
+    {{ form.commission_percent }}
+    <small class="text-muted">Leave empty to auto-calculate based on repayment type</small>
+  </div>
+
+
+  <div class="mb-3">
     <label>Date Issued</label>
     {{ form.date_issued }}
     <div class="mt-2 text-muted">
@@ -110,36 +117,47 @@ $(document).ready(function() {
 
   // 💰 Commission + Repayment Calculations
   function updateCalculations() {
-    let amount = parseFloat($('#id_amount').val()) || 0;
-    let type = $('#id_repayment_type').val();
-    let commPercent = 0;
+  let amount = parseFloat($('#id_amount').val()) || 0;
+  let type = $('#id_repayment_type').val();
+  let commPercentField = $('#id_commission_percent');
+  let commPercent = parseFloat(commPercentField.val());
 
+  // ✅ Auto set only if user has NOT manually edited
+  if (commPercentField.data('manual') !== true && !commPercentField.val()) {
     if (type === 'daily') commPercent = 12;
     else if (type === 'weekly') commPercent = 13.5;
     else if (type === 'monthly') commPercent = 15;
+    else commPercent = 0;
 
-    let commAmount = (amount * commPercent) / 100;
-    let disbursed = amount - commAmount;
-
-    let repay = 0;
-    let repayLabel = '';
-    if (type === 'daily') {
-      repay = amount / 100;
-      repayLabel = '/ Daily';
-    } else if (type === 'weekly') {
-      repay = amount / 14;
-      repayLabel = '/ Weekly';
-    } else if (type === 'monthly') {
-      repay = amount / 4;
-      repayLabel = '/ Monthly (25 Days)';
-    }
-
-    $('#commPercent').text(commPercent ? commPercent.toFixed(1) + '%' : '-');
-    $('#commAmount').text(commAmount ? commAmount.toFixed(2) : '-');
-    $('#disbursedAmount').text(disbursed ? disbursed.toFixed(2) : '-');
-    $('#repayAmount').text(repay ? repay.toFixed(2) : '-');
-    $('#repayType').text(repayLabel);
+    commPercentField.val(commPercent);
   }
+
+  let finalPercent = parseFloat(commPercentField.val()) || 0;
+
+  let commAmount = (amount * finalPercent) / 100;
+  let disbursed = amount - commAmount;
+
+  let repay = 0;
+  let repayLabel = '';
+  if (type === 'daily') {
+    repay = amount / 100;
+    repayLabel = '/ Daily';
+  } else if (type === 'weekly') {
+    repay = amount / 14;
+    repayLabel = '/ Weekly';
+  } else if (type === 'monthly') {
+    repay = amount / 4;
+    repayLabel = '/ Monthly (25 Days)';
+  }
+
+  $('#commPercent').text(finalPercent ? finalPercent.toFixed(1) + '%' : '-');
+  $('#commAmount').text(commAmount ? commAmount.toFixed(2) : '-');
+  $('#disbursedAmount').text(disbursed ? disbursed.toFixed(2) : '-');
+  $('#repayAmount').text(repay ? repay.toFixed(2) : '-');
+  $('#repayType').text(repayLabel);
+}
+
+
 
   // 📅 Update last repayment date
   function updateRepaymentDate() {
@@ -154,8 +172,13 @@ $(document).ready(function() {
     $('#lastRepayDate').text(formatted);
   }
 
-  $('#id_amount, #id_repayment_type').on('input change', updateCalculations);
+  $('#id_amount, #id_repayment_type, #id_commission_percent').on('input change', updateCalculations);
   $('#id_date_issued').on('change', updateRepaymentDate);
+  // 🔹 Detect manual editing of commission
+  $('#id_commission_percent').on('input', function() {
+    $(this).data('manual', true);
+  });
+
 
   updateCalculations();
   updateRepaymentDate();
