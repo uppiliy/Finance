@@ -133,7 +133,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 CSRF_TRUSTED_ORIGINS = [
     # Add your ngrok domain here.
     # Note: Use the scheme (https://) and the base domain.
-    'https://332e3cd7609a.ngrok-free.app',
+    
     # Example for a local/other domain if you have one
     # 'http://127.0.0.1:8000',
 ]

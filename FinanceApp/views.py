@@ -496,6 +496,9 @@ def cash_passbook(request):
             'balance': balance
         })
 
+    # Reverse so latest transaction appears first
+    passbook.reverse()
+
     return render(request, 'FinanceApp/cash_passbook.html', {'passbook': passbook})
 
 
