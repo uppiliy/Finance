@@ -63,7 +63,7 @@ class Loan(models.Model):
     date_issued = models.DateField(default=local_date)
     last_repayment_date = models.DateField(blank=True, null=True)
 
-    qr_code = models.ImageField(upload_to='loan_qrcodes/', blank=True, null=True)  # ✅ new field
+    #qr_code = models.ImageField(upload_to='loan_qrcodes/', blank=True, null=True)  # ✅ new field
 
 
     def save(self, *args, **kwargs):
@@ -108,30 +108,11 @@ class Loan(models.Model):
         super().save(*args, **kwargs)  # 🚨 MUST SAVE FIRST
 
         # 🧾 Generate QR only once
-        if not self.qr_code:
-            self.generate_qr_code()
+        '''if not self.qr_code:
+            self.generate_qr_code()'''
 
-        '''# 💸 CASH FLOW (ONLY ON CREATE)
-        if is_new:
-            CashTransaction.objects.create(
-                amount=self.disbursed_amount,
-                direction="debit",
-                txn_type="loan_disbursement",
-                reference=f"Loan {self.loan_code}"
-            )'''
+    '''def generate_qr_code(self):
         
-    def generate_qr_code(self):
-        """Generates and saves a unique QR code for this loan."""
-        '''qr_content = self.loan_code
-
-        qr = qrcode.make(qr_content)
-        buffer = BytesIO()
-        qr.save(buffer, format='PNG')
-        file_name = f"loan_{self.loan_code}.png"
-        self.qr_code.save(file_name, File(buffer), save=False)
-        super().save(update_fields=['qr_code'])'''
-
-        """Generates a QR code with big readable loan_code text above it."""
         import qrcode
         from PIL import Image, ImageDraw, ImageFont
         from io import BytesIO
@@ -190,7 +171,7 @@ class Loan(models.Model):
         file_name = f"loan_{self.loan_code}.png"
 
         self.qr_code.save(file_name, File(buffer), save=False)
-        super().save(update_fields=["qr_code"])
+        super().save(update_fields=["qr_code"])'''
 
     @property
     def total_principal(self):

@@ -612,3 +612,48 @@ def expense_history(request):
         "entries": expense_entries,
         "total_expense": total_expense
     })
+
+import qrcode
+from io import BytesIO
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from PIL import Image, ImageDraw, ImageFont
+
+def loan_qr(request, loan_code):
+    loan = get_object_or_404(Loan, loan_code=loan_code)
+
+    qr_content = f"{loan.loan_code}"
+
+    qr = qrcode.make(qr_content)
+    qr = qr.convert("RGB")
+
+    qr_width, qr_height = qr.size
+
+    # text
+    text = f"Loan Code: {loan.loan_code}"
+
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 30)
+    except:
+        font = ImageFont.load_default()
+
+    dummy = Image.new("RGB", (qr_width, 80), "white")
+    draw = ImageDraw.Draw(dummy)
+    text_width = draw.textlength(text, font=font)
+
+    text_height = 40
+    padding = 30
+    total_height = text_height + padding + qr_height
+
+    img = Image.new("RGB", (qr_width, total_height), "white")
+    draw = ImageDraw.Draw(img)
+
+    text_x = (qr_width - text_width) // 2
+    draw.text((text_x, 10), text, fill="black", font=font)
+
+    img.paste(qr, (0, text_height + padding // 2))
+
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+
+    return HttpResponse(buffer.getvalue(), content_type="image/png")
