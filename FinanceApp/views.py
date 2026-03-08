@@ -583,3 +583,32 @@ def extend_loan(request):
         'success': True,
         'message': f'Loan {loan.loan_code} extended by ₹{principal}'
     })
+
+
+def capital_history(request):
+    capital_entries = CashTransaction.objects.filter(
+        txn_type="capital"
+    ).order_by('-txn_date')
+
+    total_capital = capital_entries.aggregate(
+        total=Sum("amount")
+    )["total"] or Decimal("0")
+
+    return render(request, "FinanceApp/capital_history.html", {
+        "entries": capital_entries,
+        "total_capital": total_capital
+    })
+
+def expense_history(request):
+    expense_entries = CashTransaction.objects.filter(
+        txn_type="expense"
+    ).order_by('-txn_date')
+
+    total_expense = expense_entries.aggregate(
+        total=Sum("amount")
+    )["total"] or Decimal("0")
+
+    return render(request, "FinanceApp/expense_history.html", {
+        "entries": expense_entries,
+        "total_expense": total_expense
+    })

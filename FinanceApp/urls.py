@@ -24,7 +24,7 @@ urlpatterns = [
     path('add-expense/', views.add_expense, name='add_expense'),
     path('cash-passbook/', views.cash_passbook, name='cash_passbook'),
     path('extend-loan/', views.extend_loan, name='extend_loan'),
-
-
+    path('capital-history/', views.capital_history, name='capital_history'),
+    path('expense-history/', views.expense_history, name='expense_history'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

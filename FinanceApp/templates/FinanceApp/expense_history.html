@@ -1,0 +1,37 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}Expense History{% endblock %}
+
+{% block container %}
+<div class="app-header">💸 Expense History</div>
+
+<h5 class="text-white mt-3">
+    Total Expense: ₹ {{ total_expense }}
+</h5>
+
+<table class="table table-bordered table-striped mt-3">
+    <thead class="table-dark">
+        <tr>
+            <th>Date</th>
+            <th>Payment Mode</th>
+            <th>Amount</th>
+            <th>Reference</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for e in entries %}
+        <tr>
+            <td>{{ e.txn_date|date:"d-M-Y H:i" }}</td>
+            <td>{{ e.payment_mode|upper }}</td>
+            <td>₹ {{ e.amount }}</td>
+            <td>{{ e.reference }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center">No expense records</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
