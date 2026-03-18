@@ -134,9 +134,9 @@ def record_collection(request):
 
         
             if collection_date:
-                #now_time = timezone.localtime().time()  # REAL current time
+                now_time = timezone.localtime().time()  # REAL current time
                 collection_datetime = timezone.make_aware(
-                    datetime.combine(collection_date, datetime.min.time())
+                    datetime.combine(collection_date, now_time)
                 )
             else:
                 collection_datetime = timezone.now()
@@ -477,7 +477,7 @@ from django.shortcuts import render
 
 def cash_passbook(request):
     # Get all transactions ordered by date
-    transactions = CashTransaction.objects.order_by('txn_date', 'created_at', 'id')
+    transactions = CashTransaction.objects.order_by('txn_date', 'id')
 
     # Running balance calculation
     balance = 0
