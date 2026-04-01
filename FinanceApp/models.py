@@ -259,6 +259,7 @@ class CashTransaction(models.Model):
 
     TYPE_CHOICES = [
         ('capital', 'Capital In'),
+        ('capital_out', 'Capital Out'),
         ('loan_disbursement', 'Loan Disbursement'),
         ('commission', 'Commission'),
         ('collection', 'Collection'),

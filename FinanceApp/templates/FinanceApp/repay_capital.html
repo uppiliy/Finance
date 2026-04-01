@@ -1,0 +1,17 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}Repay Capital{% endblock %}
+
+{% block content %}
+
+<div class="app-header">💸 Repay Capital</div>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit" class="btn btn-danger w-100 mt-3">
+        Repay Capital
+    </button>
+</form>
+
+{% endblock %}

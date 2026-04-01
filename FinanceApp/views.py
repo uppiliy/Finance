@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import Customer, Loan, Collection, CashTransaction, LoanDisbursement
-from .forms import LoanForm, CollectionForm, CapitalForm, ExpenseForm
+from .forms import LoanForm, CollectionForm, CapitalForm, ExpenseForm, CapitalRepaymentForm
 from django.http import JsonResponse
 from django.db.models import Sum, ExpressionWrapper, DecimalField, F
 from django.views.decorators.csrf import csrf_exempt
@@ -413,9 +413,19 @@ def cash_dashboard(request):
     )
 
     # ➕ NEW TOTALS (DOES NOT AFFECT EXISTING)
-    total_capital = qs.filter(
+    '''total_capital = qs.filter(
+        txn_type="capital"
+    ).aggregate(total=Sum("amount"))["total"] or Decimal("0")'''
+
+    total_capital_in = qs.filter(
         txn_type="capital"
     ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+    total_capital_out = qs.filter(
+        txn_type="capital_out"
+    ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+    net_capital = total_capital_in - total_capital_out
 
     total_expense = qs.filter(
         txn_type="expense"
@@ -438,7 +448,10 @@ def cash_dashboard(request):
         "breakdown": breakdown,
 
         # new
-        "total_capital": total_capital,
+        #"total_capital": total_capital,
+        "total_capital_in": total_capital_in,
+        "total_capital_out": total_capital_out,
+        "net_capital": net_capital,
         "total_expense": total_expense,
         "total_collection": total_collection,
         "total_balance": total_balance,
@@ -657,3 +670,15 @@ def loan_qr(request, loan_code):
     img.save(buffer, format="PNG")
 
     return HttpResponse(buffer.getvalue(), content_type="image/png")
+
+def repay_capital(request):
+    if request.method == 'POST':
+        form = CapitalRepaymentForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "💸 Capital repaid successfully!")
+            return redirect('repay_capital')
+    else:
+        form = CapitalRepaymentForm()
+
+    return render(request, 'FinanceApp/repay_capital.html', {'form': form})

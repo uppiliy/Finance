@@ -9,6 +9,10 @@
     View Capital History
 </a>
 
+<a href="{% url 'repay_capital' %}" class="btn btn-outline-danger w-100 mb-3">
+    Repay Capital
+</a>
+
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}

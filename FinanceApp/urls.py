@@ -27,5 +27,6 @@ urlpatterns = [
     path('capital-history/', views.capital_history, name='capital_history'),
     path('expense-history/', views.expense_history, name='expense_history'),
     path('loan-qr/<str:loan_code>/', views.loan_qr, name='loan_qr'),
+    path('repay-capital/', views.repay_capital, name='repay_capital'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

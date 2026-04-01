@@ -184,4 +184,30 @@ class ExpenseForm(forms.ModelForm):
             instance.save()
         return instance
 
+class CapitalRepaymentForm(forms.ModelForm):
+    class Meta:
+        model = CashTransaction
+        fields = ['txn_date', 'payment_mode', 'amount', 'reference']
+        widgets = {
+            'txn_date': forms.DateTimeInput(attrs={
+                'type': 'datetime-local',
+                'class': 'form-control'
+            }),
+            'payment_mode': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'amount': forms.NumberInput(attrs={
+                'class': 'form-control'
+            }),
+            'reference': forms.TextInput(attrs={
+                'class': 'form-control'
+            }),
+        }
 
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.direction = 'debit'         # 💸 money going OUT
+        instance.txn_type = 'capital_out'   # ✅ IMPORTANT
+        if commit:
+            instance.save()
+        return instance
