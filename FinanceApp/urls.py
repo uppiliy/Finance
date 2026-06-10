@@ -28,5 +28,6 @@ urlpatterns = [
     path('expense-history/', views.expense_history, name='expense_history'),
     path('loan-qr/<str:loan_code>/', views.loan_qr, name='loan_qr'),
     path('repay-capital/', views.repay_capital, name='repay_capital'),
+    path('download-cash-passbook/', views.download_cash_passbook, name='download_cash_passbook'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

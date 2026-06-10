@@ -4,6 +4,13 @@
 {% block container %}
 <div class="app-header">💰 Cash Passbook</div>
 
+<div class="mb-3 text-end">
+    <a href="{% url 'download_cash_passbook' %}"
+       class="btn btn-success">
+        📥 Download Excel
+    </a>
+</div>
+
 <table class="table table-bordered table-striped mt-3">
     <thead class="table-dark">
         <tr>

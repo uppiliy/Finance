@@ -682,3 +682,54 @@ def repay_capital(request):
         form = CapitalRepaymentForm()
 
     return render(request, 'FinanceApp/repay_capital.html', {'form': form})
+
+from openpyxl import Workbook
+from django.http import HttpResponse
+from .models import CashTransaction
+
+
+def download_cash_passbook(request):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cash Passbook"
+
+    # Header
+    ws.append([
+        "Date",
+        "Type",
+        "Direction",
+        "Amount",
+        "Reference",
+        "Running Balance"
+    ])
+
+    transactions = CashTransaction.objects.order_by('txn_date', 'id')
+
+    balance = 0
+
+    for txn in transactions:
+        if txn.direction == "credit":
+            balance += txn.amount
+        else:
+            balance -= txn.amount
+
+        ws.append([
+            txn.txn_date.strftime("%d-%m-%Y %H:%M"),
+            txn.get_txn_type_display(),
+            txn.get_direction_display(),
+            float(txn.amount),
+            txn.reference,
+            float(balance)
+        ])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+    response['Content-Disposition'] = (
+        'attachment; filename="cash_passbook.xlsx"'
+    )
+
+    wb.save(response)
+
+    return response
