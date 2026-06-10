@@ -173,7 +173,7 @@ class Loan(models.Model):
         self.qr_code.save(file_name, File(buffer), save=False)
         super().save(update_fields=["qr_code"])'''
 
-    @property
+    '''@property
     def total_principal(self):
         return self.disbursements.aggregate(
             total=Sum('principal_amount')
@@ -198,6 +198,40 @@ class Loan(models.Model):
         )['total'] or Decimal('0')
 
     @property
+    def remaining_balance(self):
+        return self.total_principal - self.total_collected'''
+
+    from django.utils.functional import cached_property
+
+    @cached_property
+    def total_collected(self):
+        return sum(
+            (c.amount_collected or Decimal('0'))
+            for c in self.collections.all()
+    )
+
+    @cached_property
+    def total_principal(self):
+        return sum(
+            (d.principal_amount or Decimal('0'))
+            for d in self.disbursements.all()
+    )
+
+    @cached_property
+    def total_commission(self):
+        return sum(
+            (d.commission_amount or Decimal('0'))
+            for d in self.disbursements.all()
+        )
+    
+    @cached_property
+    def total_disbursed(self):
+        return sum(
+            (d.disbursed_amount or Decimal('0'))
+            for d in self.disbursements.all()
+        )
+    
+    @cached_property
     def remaining_balance(self):
         return self.total_principal - self.total_collected
 
