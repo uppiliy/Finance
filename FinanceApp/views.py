@@ -234,6 +234,7 @@ def report_view(request):
         Loan.objects
         .select_related('customer')
         .prefetch_related('disbursements', 'collections')
+        .order_by('loan_code')
     )
 
     report_loans = []
