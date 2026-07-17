@@ -7072,6 +7072,84 @@
     }
 },
 {
+    "model": "admin.logentry",
+    "pk": 545,
+    "fields": {
+        "action_time": "2026-07-16T02:42:17.496Z",
+        "user": 2,
+        "content_type": 9,
+        "object_id": "1578",
+        "object_repr": "0041 - ₹100.00",
+        "action_flag": 3,
+        "change_message": ""
+    }
+},
+{
+    "model": "admin.logentry",
+    "pk": 546,
+    "fields": {
+        "action_time": "2026-07-16T02:42:17.561Z",
+        "user": 2,
+        "content_type": 9,
+        "object_id": "1577",
+        "object_repr": "0028 - ₹500.00",
+        "action_flag": 3,
+        "change_message": ""
+    }
+},
+{
+    "model": "admin.logentry",
+    "pk": 547,
+    "fields": {
+        "action_time": "2026-07-16T02:42:17.619Z",
+        "user": 2,
+        "content_type": 9,
+        "object_id": "1576",
+        "object_repr": "0039 - ₹400.00",
+        "action_flag": 3,
+        "change_message": ""
+    }
+},
+{
+    "model": "admin.logentry",
+    "pk": 548,
+    "fields": {
+        "action_time": "2026-07-16T02:42:53.721Z",
+        "user": 2,
+        "content_type": 10,
+        "object_id": "2032",
+        "object_repr": "+₹100.00 (collection)",
+        "action_flag": 3,
+        "change_message": ""
+    }
+},
+{
+    "model": "admin.logentry",
+    "pk": 549,
+    "fields": {
+        "action_time": "2026-07-16T02:42:53.781Z",
+        "user": 2,
+        "content_type": 10,
+        "object_id": "2031",
+        "object_repr": "+₹500.00 (collection)",
+        "action_flag": 3,
+        "change_message": ""
+    }
+},
+{
+    "model": "admin.logentry",
+    "pk": 550,
+    "fields": {
+        "action_time": "2026-07-16T02:42:53.839Z",
+        "user": 2,
+        "content_type": 10,
+        "object_id": "2030",
+        "object_repr": "+₹400.00 (collection)",
+        "action_flag": 3,
+        "change_message": ""
+    }
+},
+{
     "model": "auth.permission",
     "pk": 1,
     "fields": {
@@ -22894,6 +22972,276 @@
         "loan": 112,
         "collection_date": "2026-07-12T05:15:11.847Z",
         "amount_collected": "500.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1559,
+    "fields": {
+        "loan": 124,
+        "collection_date": "2026-07-13T15:02:52.700Z",
+        "amount_collected": "400.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1560,
+    "fields": {
+        "loan": 112,
+        "collection_date": "2026-07-13T15:03:03.876Z",
+        "amount_collected": "500.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1561,
+    "fields": {
+        "loan": 107,
+        "collection_date": "2026-07-14T04:59:07.439Z",
+        "amount_collected": "200.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1562,
+    "fields": {
+        "loan": 125,
+        "collection_date": "2026-07-14T04:59:21.876Z",
+        "amount_collected": "100.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1563,
+    "fields": {
+        "loan": 127,
+        "collection_date": "2026-07-14T04:59:37.797Z",
+        "amount_collected": "200.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1564,
+    "fields": {
+        "loan": 128,
+        "collection_date": "2026-07-14T04:59:48.994Z",
+        "amount_collected": "100.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1565,
+    "fields": {
+        "loan": 129,
+        "collection_date": "2026-07-14T05:00:03.464Z",
+        "amount_collected": "200.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1566,
+    "fields": {
+        "loan": 131,
+        "collection_date": "2026-07-14T05:00:16.877Z",
+        "amount_collected": "800.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1567,
+    "fields": {
+        "loan": 115,
+        "collection_date": "2026-07-14T13:04:33.541Z",
+        "amount_collected": "200.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1568,
+    "fields": {
+        "loan": 124,
+        "collection_date": "2026-07-14T15:20:00.448Z",
+        "amount_collected": "400.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1569,
+    "fields": {
+        "loan": 113,
+        "collection_date": "2026-07-14T15:20:18.877Z",
+        "amount_collected": "400.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1570,
+    "fields": {
+        "loan": 86,
+        "collection_date": "2026-07-14T03:09:03.588Z",
+        "amount_collected": "400.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1571,
+    "fields": {
+        "loan": 125,
+        "collection_date": "2026-07-15T05:45:08.613Z",
+        "amount_collected": "100.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1572,
+    "fields": {
+        "loan": 127,
+        "collection_date": "2026-07-15T05:45:22.523Z",
+        "amount_collected": "200.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1573,
+    "fields": {
+        "loan": 128,
+        "collection_date": "2026-07-15T05:45:36.031Z",
+        "amount_collected": "200.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1574,
+    "fields": {
+        "loan": 131,
+        "collection_date": "2026-07-15T05:45:50.888Z",
+        "amount_collected": "800.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1575,
+    "fields": {
+        "loan": 120,
+        "collection_date": "2026-07-15T05:46:01.002Z",
+        "amount_collected": "100.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1579,
+    "fields": {
+        "loan": 112,
+        "collection_date": "2026-07-15T02:43:27.860Z",
+        "amount_collected": "500.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1580,
+    "fields": {
+        "loan": 124,
+        "collection_date": "2026-07-15T02:43:42.568Z",
+        "amount_collected": "400.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1581,
+    "fields": {
+        "loan": 126,
+        "collection_date": "2026-07-15T02:44:07.460Z",
+        "amount_collected": "100.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1582,
+    "fields": {
+        "loan": 122,
+        "collection_date": "2026-07-15T02:45:00.144Z",
+        "amount_collected": "300.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1583,
+    "fields": {
+        "loan": 114,
+        "collection_date": "2026-07-16T05:37:19.188Z",
+        "amount_collected": "300.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1584,
+    "fields": {
+        "loan": 125,
+        "collection_date": "2026-07-16T05:37:34.694Z",
+        "amount_collected": "100.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1585,
+    "fields": {
+        "loan": 128,
+        "collection_date": "2026-07-16T05:38:07.593Z",
+        "amount_collected": "200.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1586,
+    "fields": {
+        "loan": 129,
+        "collection_date": "2026-07-16T05:38:19.711Z",
+        "amount_collected": "200.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1587,
+    "fields": {
+        "loan": 131,
+        "collection_date": "2026-07-16T05:38:47.717Z",
+        "amount_collected": "800.00",
+        "payment_mode": "cash"
+    }
+},
+{
+    "model": "FinanceApp.collection",
+    "pk": 1588,
+    "fields": {
+        "loan": 129,
+        "collection_date": "2026-07-16T05:39:21.723Z",
+        "amount_collected": "300.00",
         "payment_mode": "cash"
     }
 },
@@ -44085,6 +44433,422 @@
         "reference": "Loan 0028 - Vembu Tea Stall",
         "created_at": "2026-07-13T05:15:11.994Z",
         "txn_date": "2026-07-12T05:15:11.847Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2008,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "400.00",
+        "reference": "Loan 0039 - Ayyanar Sweets",
+        "created_at": "2026-07-13T15:02:52.859Z",
+        "txn_date": "2026-07-13T15:02:52.700Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2009,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "500.00",
+        "reference": "Loan 0028 - Vembu Tea Stall",
+        "created_at": "2026-07-13T15:03:04.018Z",
+        "txn_date": "2026-07-13T15:03:03.876Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2010,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "debit",
+        "txn_type": "expense",
+        "amount": "250.00",
+        "reference": "GRT Chain Repair Charges",
+        "created_at": "2026-07-14T03:10:38.656Z",
+        "txn_date": "2026-07-13T03:10:04Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2011,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "debit",
+        "txn_type": "expense",
+        "amount": "1000.00",
+        "reference": "DeviSri",
+        "created_at": "2026-07-14T03:11:05.249Z",
+        "txn_date": "2026-07-14T03:10:43Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2012,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "debit",
+        "txn_type": "expense",
+        "amount": "300.00",
+        "reference": "Murugan Anna Balance 300 for loan 0021",
+        "created_at": "2026-07-14T03:13:12.920Z",
+        "txn_date": "2026-07-14T03:11:33Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2013,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "debit",
+        "txn_type": "expense",
+        "amount": "100.00",
+        "reference": "Uppili",
+        "created_at": "2026-07-14T03:16:46.923Z",
+        "txn_date": "2026-07-14T03:16:06Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2014,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "200.00",
+        "reference": "Loan 0023 - Vinoth(Village Staff)",
+        "created_at": "2026-07-14T04:59:07.606Z",
+        "txn_date": "2026-07-14T04:59:07.439Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2015,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "100.00",
+        "reference": "Loan 0040 - Vasanth Balaji Bhavan",
+        "created_at": "2026-07-14T04:59:22.007Z",
+        "txn_date": "2026-07-14T04:59:21.876Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2016,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "200.00",
+        "reference": "Loan 0042 - Ravi A (Balaji Bhavan)",
+        "created_at": "2026-07-14T04:59:37.929Z",
+        "txn_date": "2026-07-14T04:59:37.797Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2017,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "100.00",
+        "reference": "Loan 0043 - Sudha Balaji Bhavan",
+        "created_at": "2026-07-14T04:59:49.128Z",
+        "txn_date": "2026-07-14T04:59:48.994Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2018,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "200.00",
+        "reference": "Loan 0044 - Venkatesh (Balaji Bhavan)",
+        "created_at": "2026-07-14T05:00:03.581Z",
+        "txn_date": "2026-07-14T05:00:03.464Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2019,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "800.00",
+        "reference": "Loan 0045 - Mr Murugan (Balaji Bhavan)",
+        "created_at": "2026-07-14T05:00:17.005Z",
+        "txn_date": "2026-07-14T05:00:16.877Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2020,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "200.00",
+        "reference": "Loan 0031 - Musahedeen Furnitures",
+        "created_at": "2026-07-14T13:04:33.682Z",
+        "txn_date": "2026-07-14T13:04:33.541Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2021,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "400.00",
+        "reference": "Loan 0039 - Ayyanar Sweets",
+        "created_at": "2026-07-14T15:20:00.598Z",
+        "txn_date": "2026-07-14T15:20:00.448Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2022,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "400.00",
+        "reference": "Loan 0029 - Mr Raju Muhammed",
+        "created_at": "2026-07-14T15:20:19.017Z",
+        "txn_date": "2026-07-14T15:20:18.877Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2023,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "400.00",
+        "reference": "Loan 0012 - Mrs Sudha (Village Staff)",
+        "created_at": "2026-07-15T03:09:03.716Z",
+        "txn_date": "2026-07-14T03:09:03.588Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2024,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "100.00",
+        "reference": "Loan 0040 - Vasanth Balaji Bhavan",
+        "created_at": "2026-07-15T05:45:08.757Z",
+        "txn_date": "2026-07-15T05:45:08.613Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2025,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "200.00",
+        "reference": "Loan 0042 - Ravi A (Balaji Bhavan)",
+        "created_at": "2026-07-15T05:45:22.639Z",
+        "txn_date": "2026-07-15T05:45:22.523Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2026,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "200.00",
+        "reference": "Loan 0043 - Sudha Balaji Bhavan",
+        "created_at": "2026-07-15T05:45:36.160Z",
+        "txn_date": "2026-07-15T05:45:36.031Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2027,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "800.00",
+        "reference": "Loan 0045 - Mr Murugan (Balaji Bhavan)",
+        "created_at": "2026-07-15T05:45:51.003Z",
+        "txn_date": "2026-07-15T05:45:50.888Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2028,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "100.00",
+        "reference": "Loan 0036 - Sinthan Anna",
+        "created_at": "2026-07-15T05:46:01.120Z",
+        "txn_date": "2026-07-15T05:46:01.002Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2029,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "debit",
+        "txn_type": "expense",
+        "amount": "200.00",
+        "reference": "Petrol",
+        "created_at": "2026-07-15T05:47:23.150Z",
+        "txn_date": "2026-07-15T05:47:09Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2033,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "500.00",
+        "reference": "Loan 0028 - Vembu Tea Stall",
+        "created_at": "2026-07-16T02:43:27.983Z",
+        "txn_date": "2026-07-15T02:43:27.860Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2034,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "400.00",
+        "reference": "Loan 0039 - Ayyanar Sweets",
+        "created_at": "2026-07-16T02:43:42.704Z",
+        "txn_date": "2026-07-15T02:43:42.568Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2035,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "100.00",
+        "reference": "Loan 0041 - Sadhik (Village Staff)",
+        "created_at": "2026-07-16T02:44:07.585Z",
+        "txn_date": "2026-07-15T02:44:07.460Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2036,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "300.00",
+        "reference": "Loan 0038 - Hotel Village",
+        "created_at": "2026-07-16T02:45:00.279Z",
+        "txn_date": "2026-07-15T02:45:00.144Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2037,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "300.00",
+        "reference": "Loan 0030 - Manikandan K",
+        "created_at": "2026-07-16T05:37:19.342Z",
+        "txn_date": "2026-07-16T05:37:19.188Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2038,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "100.00",
+        "reference": "Loan 0040 - Vasanth Balaji Bhavan",
+        "created_at": "2026-07-16T05:37:34.826Z",
+        "txn_date": "2026-07-16T05:37:34.694Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2039,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "200.00",
+        "reference": "Loan 0043 - Sudha Balaji Bhavan",
+        "created_at": "2026-07-16T05:38:07.734Z",
+        "txn_date": "2026-07-16T05:38:07.593Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2040,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "200.00",
+        "reference": "Loan 0044 - Venkatesh (Balaji Bhavan)",
+        "created_at": "2026-07-16T05:38:19.853Z",
+        "txn_date": "2026-07-16T05:38:19.711Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2041,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "800.00",
+        "reference": "Loan 0045 - Mr Murugan (Balaji Bhavan)",
+        "created_at": "2026-07-16T05:38:47.852Z",
+        "txn_date": "2026-07-16T05:38:47.717Z"
+    }
+},
+{
+    "model": "FinanceApp.cashtransaction",
+    "pk": 2042,
+    "fields": {
+        "payment_mode": "cash",
+        "direction": "credit",
+        "txn_type": "collection",
+        "amount": "300.00",
+        "reference": "Loan 0044 - Venkatesh (Balaji Bhavan)",
+        "created_at": "2026-07-16T05:39:21.865Z",
+        "txn_date": "2026-07-16T05:39:21.723Z"
     }
 },
 {

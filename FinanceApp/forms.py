@@ -1,4 +1,6 @@
 # forms.py
+from datetime import datetime
+
 from django import forms
 from .models import Loan, Collection, CashTransaction
 from decimal import Decimal
@@ -157,8 +159,8 @@ class ExpenseForm(forms.ModelForm):
         model = CashTransaction
         fields = ['txn_date', 'payment_mode', 'amount', 'reference']
         widgets = {
-            'txn_date': forms.DateTimeInput(
-                attrs={'type': 'datetime-local', 'class': 'form-control'}
+            'txn_date': forms.DateInput(
+                attrs={'type': 'date', 'class': 'form-control'}
             ),
             'payment_mode': forms.Select(
                 attrs={'class': 'form-control'}
@@ -173,11 +175,17 @@ class ExpenseForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['txn_date'].initial = timezone.now()
+        self.fields['txn_date'].initial = timezone.localdate()
         self.fields['payment_mode'].initial = 'cash'
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+        selected_date = self.cleaned_data['txn_date']
+        current_time = timezone.localtime().time().replace(microsecond=0)
+
+        naive_datetime = datetime.combine(selected_date, current_time)
+        instance.txn_date = timezone.make_aware(naive_datetime)
+
         instance.direction = 'debit'
         instance.txn_type = 'expense'
         if commit:
