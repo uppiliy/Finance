@@ -1,0 +1,165 @@
+{% extends 'FinanceApp/base.html' %}
+
+{% block title %}
+Fund Transaction
+{% endblock %}
+
+{% block content %}
+
+<div class="app-header">
+    💰 Fund Transaction
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="form-group position-relative mb-3">
+        {{ form.fund_source_name.label_tag }}
+        {{ form.fund_source_name }}
+        <div id="fund-source-results" class="autocomplete-box"></div>
+    </div>
+
+    <div class="form-group mb-3">
+        {{ form.transaction_type.label_tag }}
+        {{ form.transaction_type }}
+    </div>
+
+    <div class="form-group mb-3">
+        {{ form.amount.label_tag }}
+        {{ form.amount }}
+    </div>
+
+    <div class="form-group mb-3">
+        {{ form.payment_mode.label_tag }}
+        {{ form.payment_mode }}
+    </div>
+
+    <div class="form-group mb-3">
+        {{ form.transaction_date.label_tag }}
+        {{ form.transaction_date }}
+    </div>
+
+    <div class="form-group mb-3">
+        {{ form.notes.label_tag }}
+        {{ form.notes }}
+    </div>
+
+    <button class="btn btn-primary">
+        Save Transaction
+    </button>
+
+</form>
+
+<style>
+.position-relative {
+    position: relative;
+}
+
+.autocomplete-box {
+    position: absolute;
+    width: 100%;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    display: none;
+    z-index: 999;
+    max-height: 250px;
+    overflow-y: auto;
+    box-shadow: 0 6px 16px rgba(0,0,0,.15);
+}
+
+.autocomplete-item {
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.autocomplete-item:hover {
+    background: #f8f9fa;
+}
+
+.autocomplete-name {
+    font-weight: bold;
+}
+
+.autocomplete-outstanding {
+    color: #666;
+    font-size: 13px;
+}
+
+.create-new {
+    color: #0d6efd;
+    font-weight: bold;
+}
+</style>
+
+<script>
+const input = document.getElementById("id_fund_source_name");
+const resultsBox = document.getElementById("fund-source-results");
+
+input.addEventListener("keyup", function () {
+
+    const query = this.value.trim();
+
+    if (!query) {
+        resultsBox.style.display = "none";
+        resultsBox.innerHTML = "";
+        return;
+    }
+
+    fetch(`/search-fund-source/?q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => {
+
+            resultsBox.innerHTML = "";
+
+            data.forEach(item => {
+
+                const div = document.createElement("div");
+
+                div.className = "autocomplete-item";
+
+                div.innerHTML = `
+                    <div class="autocomplete-name">${item.name}</div>
+                    <div class="autocomplete-outstanding">
+                        Outstanding ₹${item.outstanding.toLocaleString()}
+                    </div>
+                `;
+
+                div.onclick = function () {
+                    input.value = item.name;
+                    resultsBox.style.display = "none";
+                };
+
+                resultsBox.appendChild(div);
+
+            });
+
+            const create = document.createElement("div");
+
+            create.className = "autocomplete-item create-new";
+            create.innerHTML = `➕ Create "${query}"`;
+
+            create.onclick = function () {
+                input.value = query;
+                resultsBox.style.display = "none";
+            };
+
+            resultsBox.appendChild(create);
+
+            resultsBox.style.display = "block";
+
+        });
+
+});
+
+document.addEventListener("click", function (e) {
+
+    if (!resultsBox.contains(e.target) && e.target !== input) {
+        resultsBox.style.display = "none";
+    }
+
+});
+</script>
+
+{% endblock %}

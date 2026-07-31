@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.validators import RegexValidator
 from django.utils import timezone
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 from django.db.models import Sum
 from datetime import datetime
@@ -40,7 +40,7 @@ class Customer(models.Model):
     def __str__(self):
         return f"{self.customer_code} - {self.name}"
 
-
+        
 class Loan(models.Model):
     REPAYMENT_CHOICES = [
         ('daily', 'Daily'),
@@ -107,99 +107,7 @@ class Loan(models.Model):
 
         super().save(*args, **kwargs)  # 🚨 MUST SAVE FIRST
 
-        # 🧾 Generate QR only once
-        '''if not self.qr_code:
-            self.generate_qr_code()'''
-
-    '''def generate_qr_code(self):
         
-        import qrcode
-        from PIL import Image, ImageDraw, ImageFont
-        from io import BytesIO
-        from django.core.files import File
-        import os
-
-        # QR CONTENT (loan code only)
-        qr_content = f"{self.loan_code}"
-
-        # Generate QR
-        qr = qrcode.make(qr_content)
-        qr = qr.convert("RGB")  # ensure RGB
-
-        qr_width, qr_height = qr.size
-
-        # -------- BIG FONT LOADING --------
-        # Try to load a big TTF font (more readable)
-        try:
-            # macOS default font path
-            font_path = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-            font = ImageFont.truetype(font_path, 30)  # 40px font size
-        except:
-            # fallback (still bigger than default)
-            font = ImageFont.load_default()
-
-        text = f"Loan Code: {self.loan_code}"
-
-        # Calculate text size
-        dummy_img = Image.new("RGB", (qr_width, 80), "white")
-        dummy_draw = ImageDraw.Draw(dummy_img)
-        text_width = dummy_draw.textlength(text, font=font)
-        text_height = 40  # Approx for 40px font
-
-        padding = 30
-
-        # New image height = text + padding + QR
-        total_height = text_height + padding + qr_height
-
-        # Create final image
-        combined = Image.new("RGB", (qr_width, total_height), "white")
-        draw = ImageDraw.Draw(combined)
-
-        # Center text
-        text_x = (qr_width - text_width) // 2
-        text_y = 10
-
-        draw.text((text_x, text_y), text, fill="black", font=font)
-
-        # Paste QR below text
-        qr_y = text_height + padding // 2
-        combined.paste(qr, (0, qr_y))
-
-        # Save final image
-        buffer = BytesIO()
-        combined.save(buffer, format="PNG")
-        file_name = f"loan_{self.loan_code}.png"
-
-        self.qr_code.save(file_name, File(buffer), save=False)
-        super().save(update_fields=["qr_code"])'''
-
-    '''@property
-    def total_principal(self):
-        return self.disbursements.aggregate(
-            total=Sum('principal_amount')
-        )['total'] or Decimal('0')
-
-    @property
-    def total_commission(self):
-        return self.disbursements.aggregate(
-            total=Sum('commission_amount')
-        )['total'] or Decimal('0')
-
-    @property
-    def total_disbursed(self):
-        return self.disbursements.aggregate(
-            total=Sum('disbursed_amount')
-        )['total'] or Decimal('0')
-
-    @property
-    def total_collected(self):
-        return self.collections.aggregate(
-            total=Sum('amount_collected')
-        )['total'] or Decimal('0')
-
-    @property
-    def remaining_balance(self):
-        return self.total_principal - self.total_collected'''
 
     from django.utils.functional import cached_property
 
@@ -262,21 +170,25 @@ class Collection(models.Model):
     )
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None  # ✅ detect first save
 
         super().save(*args, **kwargs)
 
-        if is_new:
-            from FinanceApp.models import CashTransaction
+        try:
+            cash_txn = self.cash_transaction
 
-            CashTransaction.objects.create(
-                amount=self.amount_collected,
-                direction="credit",
-                txn_type="collection",
-                payment_mode=self.payment_mode,
-                reference=f"Loan {self.loan.loan_code} - {self.loan.customer.name}",
-                txn_date=self.collection_date
+        except CashTransaction.DoesNotExist:
+            cash_txn = CashTransaction(
+                collection=self
             )
+
+        cash_txn.amount = self.amount_collected
+        cash_txn.direction = CashTransaction.CREDIT
+        cash_txn.txn_type = "collection"
+        cash_txn.payment_mode = self.payment_mode
+        cash_txn.reference = f"Loan {self.loan.loan_code} - {self.loan.customer.name}"
+        cash_txn.txn_date = self.collection_date
+
+        cash_txn.save()
 
     def __str__(self):
         return f"{self.loan.loan_code} - ₹{self.amount_collected}"
@@ -294,6 +206,8 @@ class CashTransaction(models.Model):
     TYPE_CHOICES = [
         ('capital', 'Capital In'),
         ('capital_out', 'Capital Out'),
+        ('fund_in', 'Fund Received'),
+        ('fund_repayment', 'Fund Repaid'),
         ('loan_disbursement', 'Loan Disbursement'),
         ('commission', 'Commission'),
         ('collection', 'Collection'),
@@ -331,6 +245,38 @@ class CashTransaction(models.Model):
     # ✅ USER SELECTABLE DATE (default = now)
     txn_date = models.DateTimeField(default=timezone.now)
 
+    loan_disbursement = models.OneToOneField(
+        "LoanDisbursement",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="cash_transaction",
+    )
+
+    collection = models.OneToOneField(
+        "Collection",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="cash_transaction",
+    )
+
+    expense = models.OneToOneField(
+        "Expense",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="cash_transaction",
+    )
+
+    fund_transaction = models.OneToOneField(
+        "FundTransaction",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="cash_transaction",
+    )
+
 
     def __str__(self):
         sign = "+" if self.direction == "credit" else "-"
@@ -360,25 +306,208 @@ class LoanDisbursement(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
 
-        # Commission calculation (same logic as Loan.save)
+        # Commission calculation
         self.commission_amount = (
-            self.principal_amount * self.commission_percent / Decimal('100')
+            self.principal_amount * self.commission_percent / Decimal("100")
         )
-        self.disbursed_amount = self.principal_amount - self.commission_amount
+
+        self.disbursed_amount = (
+            self.principal_amount - self.commission_amount
+        )
 
         super().save(*args, **kwargs)
 
-        # Cash ledger entries (ONLY once)
-        if is_new:
-            from FinanceApp.models import CashTransaction
+        try:
+            cash_txn = self.cash_transaction
 
-            # Debit: money given to customer
-            CashTransaction.objects.create(
-                amount=self.disbursed_amount,
-                direction="debit",
-                txn_type="loan_disbursement",
-                reference=f"Loan {self.loan.loan_code}  - {self.loan.customer.name}",
-                txn_date=self.created_at
+        except CashTransaction.DoesNotExist:
+            cash_txn = CashTransaction(
+                loan_disbursement=self
             )
+
+        cash_txn.amount = self.disbursed_amount
+        cash_txn.direction = CashTransaction.DEBIT
+        cash_txn.txn_type = "loan_disbursement"
+        cash_txn.reference = f"Loan {self.loan.loan_code} - {self.loan.customer.name}"
+        cash_txn.txn_date = self.created_at
+
+        cash_txn.save()
+
+class Expense(models.Model):
+    PAYMENT_MODES = [
+        ('cash', 'Cash'),
+        ('upi', 'UPI / Bank'),
+    ]
+
+    CATEGORY_CHOICES = [
+        ('fuel', 'Fuel'),
+        ('salary', 'Salary'),
+        ('rent', 'Rent'),
+        ('office', 'Office'),
+        ('travel', 'Travel'),
+        ('other', 'Other'),
+    ]
+
+    description = models.CharField(max_length=200)
+
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default='other'
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2
+    )
+
+    payment_mode = models.CharField(
+        max_length=10,
+        choices=PAYMENT_MODES,
+        default='cash'
+    )
+
+    expense_date = models.DateTimeField(
+        default=timezone.now
+    )
+
+    notes = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    def save(self, *args, **kwargs):
+
+        super().save(*args, **kwargs)
+
+        try:
+            cash_txn = self.cash_transaction
+
+        except CashTransaction.DoesNotExist:
+            cash_txn = CashTransaction(
+                expense=self
+            )
+
+        cash_txn.amount = self.amount
+        cash_txn.direction = CashTransaction.DEBIT
+        cash_txn.txn_type = "expense"
+        cash_txn.payment_mode = self.payment_mode
+        cash_txn.reference = self.description
+        cash_txn.txn_date = self.expense_date
+
+        cash_txn.save()
+
+    def __str__(self):
+        return f"{self.description} - ₹{self.amount}"
+    
+
+class FundSource(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    notes = models.TextField(blank=True, null=True)
+
+    @property
+    def total_received(self):
+        return self.transactions.filter(
+            transaction_type="received"
+        ).aggregate(
+            total=models.Sum("amount")
+        )["total"] or Decimal("0")
+
+
+    @property
+    def total_repaid(self):
+        return self.transactions.filter(
+            transaction_type="repayment"
+        ).aggregate(
+            total=models.Sum("amount")
+        )["total"] or Decimal("0")
+
+
+    @property
+    def outstanding(self):
+        return self.total_received - self.total_repaid
+
+    def __str__(self):
+        return f"{self.name} (Outstanding ₹{self.outstanding:,.2f})"
+
+class FundTransaction(models.Model):
+    RECEIVED = "received"
+    REPAYMENT = "repayment"
+
+    TRANSACTION_CHOICES = [
+        (RECEIVED, "Money Received"),
+        (REPAYMENT, "Money Repaid"),
+    ]
+
+    PAYMENT_MODES = [
+        ("cash", "Cash"),
+        ("upi", "UPI / Bank"),
+    ]
+
+    fund_source = models.ForeignKey(
+        FundSource,
+        on_delete=models.CASCADE,
+        related_name="transactions"
+    )
+
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=TRANSACTION_CHOICES
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2
+    )
+
+    payment_mode = models.CharField(
+        max_length=10,
+        choices=PAYMENT_MODES,
+        default="cash"
+    )
+
+    transaction_date = models.DateTimeField(
+        default=timezone.now
+    )
+
+    notes = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    def save(self, *args, **kwargs):
+
+        if self.transaction_date:
+            self.transaction_date = datetime.combine(
+                self.transaction_date.date(),
+                time.min
+            )
+
+        super().save(*args, **kwargs)
+
+        try:
+            cash_txn = self.cash_transaction
+
+        except CashTransaction.DoesNotExist:
+            cash_txn = CashTransaction(
+                fund_transaction=self
+            )
+
+        cash_txn.amount = self.amount
+        cash_txn.payment_mode = self.payment_mode
+        cash_txn.reference = self.fund_source.name
+        cash_txn.txn_date = self.transaction_date
+
+        if self.transaction_type == self.RECEIVED:
+            cash_txn.direction = CashTransaction.CREDIT
+            cash_txn.txn_type = "fund_in"
+
+        else:
+            cash_txn.direction = CashTransaction.DEBIT
+            cash_txn.txn_type = "fund_repayment"
+
+        cash_txn.save()
+
+    def __str__(self):
+        return f"{self.fund_source.name} - {self.get_transaction_type_display()} ₹{self.amount}"

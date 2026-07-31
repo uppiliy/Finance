@@ -29,5 +29,10 @@ urlpatterns = [
     path('loan-qr/<str:loan_code>/', views.loan_qr, name='loan_qr'),
     path('repay-capital/', views.repay_capital, name='repay_capital'),
     path('download-cash-passbook/', views.download_cash_passbook, name='download_cash_passbook'),
+    path('fund-transaction/', views.fund_transaction, name='fund_transaction'),
+    path("search-fund-source/", views.search_fund_source, name="search_fund_source"),
+    path("fund-ledger/", views.fund_ledger, name="fund_ledger"),
+    path("fund-ledger/<int:pk>/", views.fund_ledger_detail, name="fund_ledger_detail"),
+
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

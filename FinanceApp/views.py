@@ -1,12 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Customer, Loan, Collection, CashTransaction, LoanDisbursement
-from .forms import LoanForm, CollectionForm, CapitalForm, ExpenseForm, CapitalRepaymentForm
+from .models import Customer, Loan, Collection, CashTransaction, LoanDisbursement, Expense, FundTransaction, FundSource
+from .forms import LoanForm, CollectionForm, CapitalForm, ExpenseForm, CapitalRepaymentForm, FundTransactionForm
 from django.http import JsonResponse
 from django.db.models import Sum, ExpressionWrapper, DecimalField, F
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 def create_loan(request):
@@ -439,6 +439,10 @@ def cash_dashboard(request):
     # 🧮 Total Balance (Cash + Bank)
     total_balance = cash_in_hand + bank_balance
 
+    total_fund_outstanding = sum(
+    fund.outstanding for fund in FundSource.objects.all()
+)
+
     context = {
         "cash_in_hand": cash_in_hand,
         "bank_balance": bank_balance,
@@ -447,6 +451,7 @@ def cash_dashboard(request):
         "bank_credit": bank_credit,
         "bank_debit": bank_debit,
         "breakdown": breakdown,
+        "total_fund_outstanding": total_fund_outstanding,
 
         # new
         #"total_capital": total_capital,
@@ -473,16 +478,29 @@ def add_capital(request):
     return render(request, 'FinanceApp/add_capital.html', {'form': form})
 
 def add_expense(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = ExpenseForm(request.POST)
+
         if form.is_valid():
-            form.save()
-            messages.success(request, "💸 Expense recorded successfully!")
-            return redirect('add_expense')  # reload empty form
+            expense = form.save(commit=False)
+
+            selected_date = form.cleaned_data["expense_date"]
+
+            now_time = timezone.localtime().time()
+
+            expense.expense_date = timezone.make_aware(
+                datetime.combine(selected_date, now_time)
+            )
+
+            expense.save()
+
+            messages.success(request, "Expense recorded successfully.")
+            return redirect("add_expense")
+
     else:
         form = ExpenseForm()
 
-    return render(request, 'FinanceApp/add_expense.html', {'form': form})
+    return render(request, "FinanceApp/add_expense.html", {"form": form})
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -734,3 +752,103 @@ def download_cash_passbook(request):
     wb.save(response)
 
     return response
+
+
+def fund_transaction(request):
+    if request.method == "POST":
+        form = FundTransactionForm(request.POST)
+
+        if form.is_valid():
+
+            name = form.cleaned_data["fund_source_name"].strip()
+
+            fund_source = FundSource.objects.filter(
+                name__iexact=name
+            ).first()
+
+            if not fund_source:
+                fund_source = FundSource.objects.create(
+                    name=name
+                )
+
+            transaction = form.save(commit=False)
+            transaction.fund_source = fund_source
+
+            selected_date = form.cleaned_data["transaction_date"]
+
+            # If only a date was entered, combine it with the current time.
+            if isinstance(selected_date, date):
+                now = timezone.localtime()
+
+                transaction.transaction_date = timezone.make_aware(
+                    datetime.combine(selected_date, now.time())
+                )
+            else:
+                transaction.transaction_date = selected_date
+
+            transaction.save()
+
+            messages.success(request, "Fund transaction recorded successfully.")
+            return redirect("fund_transaction")
+
+    else:
+        form = FundTransactionForm()
+
+    return render(
+        request,
+        "FinanceApp/fund_transaction.html",
+        {
+            "form": form,
+        },
+    )
+
+
+def search_fund_source(request):
+    query = request.GET.get("q", "").strip()
+
+    results = []
+
+    if query:
+        lenders = FundSource.objects.filter(
+            name__icontains=query
+        ).order_by("name")[:10]
+
+        for lender in lenders:
+            results.append({
+                "id": lender.id,
+                "name": lender.name,
+                #"code": lender.lender_code,
+                "outstanding": float(lender.outstanding),
+            })
+
+    return JsonResponse(results, safe=False)
+
+def fund_ledger(request):
+
+    fund_sources = FundSource.objects.all().order_by("name")
+
+    return render(
+        request,
+        "FinanceApp/fund_ledger.html",
+        {
+            "fund_sources": fund_sources,
+        },
+    )
+
+def fund_ledger_detail(request, pk):
+    fund = get_object_or_404(FundSource, pk=pk)
+
+    transactions = (
+        FundTransaction.objects
+        .filter(fund_source=fund)
+        .order_by("transaction_date", "id")
+    )
+
+    return render(
+        request,
+        "FinanceApp/fund_ledger_detail.html",
+        {
+            "fund": fund,
+            "transactions": transactions,
+        },
+    )

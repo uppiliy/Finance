@@ -1,0 +1,75 @@
+{% extends 'FinanceApp/base.html' %}
+{% block title %}Fund Repayment - Sri Uppiliyappa Finance{% endblock %}
+
+{% block content %}
+
+<div class="app-header">
+    💸 Repay Fund Source
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label">{{ form.fund_source.label }}</label>
+                {{ form.fund_source }}
+                {% if form.fund_source.errors %}
+                    <div class="text-danger small">
+                        {{ form.fund_source.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">{{ form.amount.label }}</label>
+                {{ form.amount }}
+                {% if form.amount.errors %}
+                    <div class="text-danger small">
+                        {{ form.amount.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">{{ form.payment_mode.label }}</label>
+                {{ form.payment_mode }}
+                {% if form.payment_mode.errors %}
+                    <div class="text-danger small">
+                        {{ form.payment_mode.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">{{ form.repayment_date.label }}</label>
+                {{ form.repayment_date }}
+                {% if form.repayment_date.errors %}
+                    <div class="text-danger small">
+                        {{ form.repayment_date.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">{{ form.notes.label }}</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}
+                    <div class="text-danger small">
+                        {{ form.notes.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                💾 Save Repayment
+            </button>
+
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}

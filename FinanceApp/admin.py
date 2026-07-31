@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, Loan, Collection, CashTransaction, LoanDisbursement
+from .models import Customer, Loan, Collection, CashTransaction, LoanDisbursement, Expense, FundTransaction
 from django.utils.html import mark_safe
 
 
@@ -153,3 +153,8 @@ class LoanDisbursementAdmin(admin.ModelAdmin):
     )
 
     ordering = ('-created_at',)
+    
+admin.site.register(Expense)
+
+admin.site.register(FundTransaction)
+
