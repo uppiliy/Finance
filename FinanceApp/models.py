@@ -1,3 +1,4 @@
+from .cash_integrity import atomic_cash_save
 from django.db import models
 from django.core.validators import RegexValidator
 from django.utils import timezone
@@ -40,7 +41,6 @@ class Customer(models.Model):
     def __str__(self):
         return f"{self.customer_code} - {self.name}"
 
-        
 class Loan(models.Model):
     REPAYMENT_CHOICES = [
         ('daily', 'Daily'),
@@ -107,7 +107,6 @@ class Loan(models.Model):
 
         super().save(*args, **kwargs)  # 🚨 MUST SAVE FIRST
 
-        
 
     from django.utils.functional import cached_property
 
@@ -131,21 +130,18 @@ class Loan(models.Model):
             (d.commission_amount or Decimal('0'))
             for d in self.disbursements.all()
         )
-    
     @cached_property
     def total_disbursed(self):
         return sum(
             (d.disbursed_amount or Decimal('0'))
             for d in self.disbursements.all()
         )
-    
     @cached_property
     def remaining_balance(self):
         return self.total_principal - self.total_collected
 
     def __str__(self):
         return f"Loan {self.loan_code} - {self.customer.name}"
-    
 from django.db import models
 from django.utils import timezone
 
@@ -169,26 +165,27 @@ class Collection(models.Model):
         default='cash'
     )
 
+    @atomic_cash_save("collection")
     def save(self, *args, **kwargs):
 
         super().save(*args, **kwargs)
 
-        try:
-            cash_txn = self.cash_transaction
+        # Read persisted values so update_fields and database rounding stay consistent.
+        db = self._state.db
+        source = type(self).objects.using(db).get(pk=self.pk)
+        cash_txn = CashTransaction.objects.using(db).filter(collection_id=self.pk).first()
+        if cash_txn is None:
+            cash_txn = CashTransaction(collection=self)
 
-        except CashTransaction.DoesNotExist:
-            cash_txn = CashTransaction(
-                collection=self
-            )
-
-        cash_txn.amount = self.amount_collected
+        cash_txn.amount = source.amount_collected
         cash_txn.direction = CashTransaction.CREDIT
         cash_txn.txn_type = "collection"
-        cash_txn.payment_mode = self.payment_mode
-        cash_txn.reference = f"Loan {self.loan.loan_code} - {self.loan.customer.name}"
-        cash_txn.txn_date = self.collection_date
+        cash_txn.payment_mode = source.payment_mode
+        cash_txn.reference = f"Loan {source.loan.loan_code} - {source.loan.customer.name}"
+        cash_txn.txn_date = source.collection_date
 
-        cash_txn.save()
+        cash_txn.save(using=db)
+
 
     def __str__(self):
         return f"{self.loan.loan_code} - ₹{self.amount_collected}"
@@ -305,6 +302,7 @@ class LoanDisbursement(models.Model):
     # 🔥 BUSINESS DATE (editable / backdatable / future-proof)
     created_at = models.DateTimeField(default=timezone.now)
 
+    @atomic_cash_save("loan_disbursement")
     def save(self, *args, **kwargs):
 
         # Commission calculation
@@ -318,21 +316,21 @@ class LoanDisbursement(models.Model):
 
         super().save(*args, **kwargs)
 
-        try:
-            cash_txn = self.cash_transaction
+        # Read persisted values so update_fields and database rounding stay consistent.
+        db = self._state.db
+        source = type(self).objects.using(db).get(pk=self.pk)
+        cash_txn = CashTransaction.objects.using(db).filter(loan_disbursement_id=self.pk).first()
+        if cash_txn is None:
+            cash_txn = CashTransaction(loan_disbursement=self)
 
-        except CashTransaction.DoesNotExist:
-            cash_txn = CashTransaction(
-                loan_disbursement=self
-            )
-
-        cash_txn.amount = self.disbursed_amount
+        cash_txn.amount = source.disbursed_amount
         cash_txn.direction = CashTransaction.DEBIT
         cash_txn.txn_type = "loan_disbursement"
-        cash_txn.reference = f"Loan {self.loan.loan_code} - {self.loan.customer.name}"
-        cash_txn.txn_date = self.created_at
+        cash_txn.reference = f"Loan {source.loan.loan_code} - {source.loan.customer.name}"
+        cash_txn.txn_date = source.created_at
 
-        cash_txn.save()
+        cash_txn.save(using=db)
+
 
 class Expense(models.Model):
     PAYMENT_MODES = [
@@ -377,30 +375,30 @@ class Expense(models.Model):
         null=True
     )
 
+    @atomic_cash_save("expense")
     def save(self, *args, **kwargs):
 
         super().save(*args, **kwargs)
 
-        try:
-            cash_txn = self.cash_transaction
+        # Read persisted values so update_fields and database rounding stay consistent.
+        db = self._state.db
+        source = type(self).objects.using(db).get(pk=self.pk)
+        cash_txn = CashTransaction.objects.using(db).filter(expense_id=self.pk).first()
+        if cash_txn is None:
+            cash_txn = CashTransaction(expense=self)
 
-        except CashTransaction.DoesNotExist:
-            cash_txn = CashTransaction(
-                expense=self
-            )
-
-        cash_txn.amount = self.amount
+        cash_txn.amount = source.amount
         cash_txn.direction = CashTransaction.DEBIT
         cash_txn.txn_type = "expense"
-        cash_txn.payment_mode = self.payment_mode
-        cash_txn.reference = self.description
-        cash_txn.txn_date = self.expense_date
+        cash_txn.payment_mode = source.payment_mode
+        cash_txn.reference = source.description
+        cash_txn.txn_date = source.expense_date
 
-        cash_txn.save()
+        cash_txn.save(using=db)
+
 
     def __str__(self):
         return f"{self.description} - ₹{self.amount}"
-    
 
 class FundSource(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -476,6 +474,7 @@ class FundTransaction(models.Model):
         null=True
     )
 
+    @atomic_cash_save("fund_transaction")
     def save(self, *args, **kwargs):
 
         if self.transaction_date:
@@ -486,20 +485,19 @@ class FundTransaction(models.Model):
 
         super().save(*args, **kwargs)
 
-        try:
-            cash_txn = self.cash_transaction
+        # Read persisted values so update_fields and database rounding stay consistent.
+        db = self._state.db
+        source = type(self).objects.using(db).get(pk=self.pk)
+        cash_txn = CashTransaction.objects.using(db).filter(fund_transaction_id=self.pk).first()
+        if cash_txn is None:
+            cash_txn = CashTransaction(fund_transaction=self)
 
-        except CashTransaction.DoesNotExist:
-            cash_txn = CashTransaction(
-                fund_transaction=self
-            )
+        cash_txn.amount = source.amount
+        cash_txn.payment_mode = source.payment_mode
+        cash_txn.reference = source.fund_source.name
+        cash_txn.txn_date = source.transaction_date
 
-        cash_txn.amount = self.amount
-        cash_txn.payment_mode = self.payment_mode
-        cash_txn.reference = self.fund_source.name
-        cash_txn.txn_date = self.transaction_date
-
-        if self.transaction_type == self.RECEIVED:
+        if source.transaction_type == source.RECEIVED:
             cash_txn.direction = CashTransaction.CREDIT
             cash_txn.txn_type = "fund_in"
 
@@ -507,7 +505,8 @@ class FundTransaction(models.Model):
             cash_txn.direction = CashTransaction.DEBIT
             cash_txn.txn_type = "fund_repayment"
 
-        cash_txn.save()
+        cash_txn.save(using=db)
+
 
     def __str__(self):
         return f"{self.fund_source.name} - {self.get_transaction_type_display()} ₹{self.amount}"
