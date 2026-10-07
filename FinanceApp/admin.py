@@ -132,6 +132,13 @@ class CashTransactionAdmin(admin.ModelAdmin):
     search_fields = ('reference',)
     ordering = ('-created_at',)
 
+    raw_id_fields = (
+        'loan_disbursement',
+        'collection',
+        'expense',
+        'fund_transaction',
+    )
+
 @admin.register(LoanDisbursement)
 class LoanDisbursementAdmin(admin.ModelAdmin):
     list_display = (
