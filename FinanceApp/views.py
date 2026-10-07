@@ -1,3 +1,10 @@
+import logging
+from django.core.exceptions import ValidationError
+from django.db import transaction as db_transaction, DatabaseError
+from .forms import LoanExtensionForm
+
+logger = logging.getLogger(__name__)
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import Customer, Loan, Collection, CashTransaction, LoanDisbursement, Expense, FundTransaction, FundSource
@@ -11,66 +18,50 @@ from decimal import Decimal
 
 def create_loan(request):
     created_loan = None
-
-    # 🧠 Step 1: Handle normal POST request
     if request.method == 'POST':
         form = LoanForm(request.POST)
         if form.is_valid():
-            name = form.cleaned_data['customer_name']
-            mobile = form.cleaned_data['mobile_number']
-            amount = form.cleaned_data['amount']
-            repayment_type = form.cleaned_data['repayment_type']
-            commission_percent = form.cleaned_data.get('commission_percent')
-            date_issued = form.cleaned_data['date_issued']
-
-            # Customer check
-            customer, created = Customer.objects.get_or_create(
-                mobile_number=mobile,
-                defaults={'name': name}
-            )
-            if not created and customer.name != name:
-                customer.name = name
-                customer.save()
-
-            # Create loan
-            loan = Loan.objects.create(
-                customer=customer,
-                amount=amount,
-                repayment_type=repayment_type,
-                commission_percent=commission_percent,
-                date_issued=date_issued
-            )
-
-            # ✅ CREATE INITIAL DISBURSEMENT
-            commission_percent = loan.commission_percent or Decimal("0")
-            commission_amount = (amount * commission_percent) / Decimal("100")
-            disbursed_amount = amount - commission_amount
-
-            LoanDisbursement.objects.create(
-                loan=loan,
-                principal_amount=amount,
-                commission_percent=commission_percent,
-                commission_amount=commission_amount,
-                disbursed_amount=disbursed_amount,
-                created_at=timezone.make_aware(datetime.combine(loan.date_issued,timezone.localtime().time()))
-            )
-
-            messages.success(request, f"🎉 Loan created successfully! Loan ID: {loan.loan_code}")
-
-            # ✅ Redirect using PRG pattern
-            return redirect(f"{request.path}?loan={loan.loan_code}")
+            try:
+                with db_transaction.atomic():
+                    name = form.cleaned_data['customer_name']
+                    customer, created = Customer.objects.get_or_create(
+                        mobile_number=form.cleaned_data['mobile_number'], defaults={'name': name}
+                    )
+                    if not created:
+                        customer = Customer.objects.select_for_update().get(pk=customer.pk)
+                        if customer.name != name:
+                            customer.name = name
+                            customer.save(update_fields=['name'])
+                    loan = Loan.objects.create(
+                        customer=customer,
+                        amount=form.cleaned_data['amount'],
+                        repayment_type=form.cleaned_data['repayment_type'],
+                        commission_percent=form.cleaned_data.get('commission_percent'),
+                        date_issued=form.cleaned_data['date_issued'],
+                    )
+                    _check_reference_length(f'Loan {loan.loan_code} - {customer.name}')
+                    LoanDisbursement.objects.create(
+                        loan=loan, principal_amount=loan.amount,
+                        commission_percent=loan.commission_percent or Decimal('0'),
+                        created_at=timezone.make_aware(datetime.combine(
+                            loan.date_issued, timezone.localtime().time()
+                        )),
+                    )
+            except ValidationError as exc:
+                _form_problem(form, request, _validation_text(exc))
+            except DatabaseError:
+                logger.exception('Loan creation failed')
+                _form_problem(form, request, 'Unable to save the loan. No part of this operation was saved.')
+            else:
+                messages.success(request, f'🎉 Loan created successfully! Loan ID: {loan.loan_code}')
+                return redirect(f'{request.path}?loan={loan.loan_code}')
     else:
         form = LoanForm()
-
-    # 🧠 Step 2: Handle redirected GET request with ?loan=1234
     loan_code = request.GET.get('loan')
     if loan_code:
         created_loan = get_object_or_404(Loan, loan_code=loan_code)
+    return render(request, 'FinanceApp/loan_form.html', {'form': form, 'created_loan': created_loan})
 
-    return render(request, 'FinanceApp/loan_form.html', {
-        'form': form,
-        'created_loan': created_loan
-    })
 
 # 🔍 AJAX endpoint to check customer + active loans
 def check_customer(request):
@@ -113,59 +104,38 @@ def check_customer(request):
 
     except Customer.DoesNotExist:
         return JsonResponse({'exists': False})
-    
 @csrf_exempt
 def record_collection(request):
     if request.method == 'POST':
         form = CollectionForm(request.POST)
-        if form.is_valid():
-            loan_code = form.cleaned_data['loan_code']
-            amount = form.cleaned_data['amount_collected']
-            payment_mode = form.cleaned_data['payment_mode']
-            collection_date = form.cleaned_data.get('collection_date')
-
-            try:
-                loan = Loan.objects.get(loan_code=loan_code)
-            except Loan.DoesNotExist:
-                return JsonResponse({
-                    'success': False,
-                    'message': f"No loan found with code {loan_code}"
-                })
-
-        
-            if collection_date:
-                now_time = timezone.localtime().time()  # REAL current time
-                collection_datetime = timezone.make_aware(
-                    datetime.combine(collection_date, now_time)
+        if not form.is_valid():
+            return _json_form_errors(form)
+        collected_at = form.cleaned_data.get('collection_date') or timezone.now()
+        try:
+            with db_transaction.atomic():
+                # Share the loan lock with extension so snapshots see complete collections.
+                loan = Loan.objects.select_for_update().get(loan_code=form.cleaned_data['loan_code'])
+                _check_reference_length(f'Loan {loan.loan_code} - {loan.customer.name}')
+                amount = form.cleaned_data['amount_collected']
+                Collection.objects.create(
+                    loan=loan, amount_collected=amount,
+                    payment_mode=form.cleaned_data['payment_mode'], collection_date=collected_at,
                 )
-            else:
-                collection_datetime = timezone.now()
-
-            # ✅ SAVE COLLECTION WITH DATE
-            Collection.objects.create(
-                loan=loan,
-                amount_collected=amount,
-                payment_mode=payment_mode,
-                collection_date=collection_datetime
-            )
-
-            total_collected = loan.total_collected
-            remaining_balance = loan.remaining_balance
-
-            return JsonResponse({
-                'success': True,
-                'message': f"₹{amount} collected for Loan {loan.loan_code}",
-                'total_collected': float(total_collected),
-                'remaining_balance': float(remaining_balance)
-            })
-
+                total_collected = loan.total_collected
+                remaining_balance = loan.remaining_balance
+        except Loan.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Loan not found.'})
+        except ValidationError as exc:
+            return JsonResponse({'success': False, 'message': _validation_text(exc)})
+        except DatabaseError:
+            logger.exception('Collection recording failed')
+            return JsonResponse({'success': False, 'message': 'Unable to save the collection. No collection was saved.'})
         return JsonResponse({
-            'success': False,
-            'message': 'Invalid form data'
+            'success': True, 'message': f'₹{amount} collected for Loan {loan.loan_code}',
+            'total_collected': float(total_collected), 'remaining_balance': float(remaining_balance),
         })
+    return render(request, 'FinanceApp/record_collection.html', {'form': CollectionForm()})
 
-    form = CollectionForm()
-    return render(request, 'FinanceApp/record_collection.html', {'form': form})
 
 
 
@@ -184,7 +154,7 @@ def get_customer_details(request):
         elif loan.repayment_type == 'weekly':
             repay_amount = principal / 14
         else:
-            repay_amount = principal / 3
+            repay_amount = principal / 4
 
 
         data = {
@@ -293,7 +263,6 @@ def get_loan_history(request):
 
     today = timezone.localdate()
     loan_data = []
-    
     for loan in loans:
         disbursements = list(
             loan.disbursements.all().order_by('created_at')
@@ -322,7 +291,6 @@ def get_loan_history(request):
                 'collected_till_now': collected_display,
             })
 
-        
         loan_data.append({
             'loan_code': loan.loan_code,
             'total_principal': float(loan.total_principal),
@@ -469,38 +437,42 @@ def add_capital(request):
     if request.method == 'POST':
         form = CapitalForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "💰 Capital recorded successfully!")
-            return redirect('add_capital')  # reload form empty
+            try:
+                with db_transaction.atomic():
+                    form.save()
+            except ValidationError as exc:
+                _form_problem(form, request, _validation_text(exc))
+            except DatabaseError:
+                logger.exception('Capital recording failed')
+                _form_problem(form, request, 'Unable to save the capital entry.')
+            else:
+                messages.success(request, '💰 Capital recorded successfully!')
+                return redirect('add_capital')
     else:
         form = CapitalForm()
-
     return render(request, 'FinanceApp/add_capital.html', {'form': form})
 
+
 def add_expense(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         form = ExpenseForm(request.POST)
-
         if form.is_valid():
-            expense = form.save(commit=False)
-
-            selected_date = form.cleaned_data["expense_date"]
-
-            now_time = timezone.localtime().time()
-
-            expense.expense_date = timezone.make_aware(
-                datetime.combine(selected_date, now_time)
-            )
-
-            expense.save()
-
-            messages.success(request, "Expense recorded successfully.")
-            return redirect("add_expense")
-
+            try:
+                with db_transaction.atomic():
+                    # The form owns date conversion; the model owns cash synchronization.
+                    form.save()
+            except ValidationError as exc:
+                _form_problem(form, request, _validation_text(exc))
+            except DatabaseError:
+                logger.exception('Expense recording failed')
+                _form_problem(form, request, 'Unable to save the expense. No expense was saved.')
+            else:
+                messages.success(request, 'Expense recorded successfully.')
+                return redirect('add_expense')
     else:
         form = ExpenseForm()
+    return render(request, 'FinanceApp/add_expense.html', {'form': form})
 
-    return render(request, "FinanceApp/add_expense.html", {"form": form})
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -534,87 +506,42 @@ def cash_passbook(request):
     return render(request, 'FinanceApp/cash_passbook.html', {'passbook': passbook})
 
 
-'''@csrf_exempt
-def extend_loan(request):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request'})
-
-    try:
-        loan = Loan.objects.get(loan_code=request.POST.get('loan_code'))
-        principal = Decimal(request.POST.get('add_amount'))
-        commission_percent = Decimal(request.POST.get('commission_percent'))
-    except:
-        return JsonResponse({'success': False, 'message': 'Invalid data'})
-
-    # 🔹 STEP 1: get total collected so far
-    total_collected = loan.total_collected
-
-    # 🔹 STEP 2: update PREVIOUS disbursement
-    last_disb = loan.disbursements.order_by('-created_at').first()
-    if last_disb:
-        last_disb.collected_till_now = total_collected
-        last_disb.save(update_fields=['collected_till_now'])
-
-    # 🔹 STEP 3: create NEW disbursement (fresh)
-    LoanDisbursement.objects.create(
-        loan=loan,
-        principal_amount=principal,
-        commission_percent=commission_percent,
-        collected_till_now=0  # 👈 starts clean
-    )
-
-    return JsonResponse({
-        'success': True,
-        'message': f'Loan {loan.loan_code} extended by ₹{principal}'
-    })'''
-
 @csrf_exempt
 def extend_loan(request):
     if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request'})
-
+        return JsonResponse({'success': False, 'message': 'Invalid request'}, status=405)
+    form = LoanExtensionForm(request.POST)
+    if not form.is_valid():
+        return _json_form_errors(form)
+    selected_date = form.cleaned_data.get('extend_date')
+    disbursed_at = timezone.make_aware(datetime.combine(
+        selected_date, timezone.localtime().time()
+    )) if selected_date else timezone.now()
     try:
-        loan = Loan.objects.get(loan_code=request.POST.get('loan_code'))
-        principal = Decimal(request.POST.get('add_amount'))
-        commission_percent = Decimal(request.POST.get('commission_percent'))
-    except:
-        return JsonResponse({'success': False, 'message': 'Invalid data'})
-
-    # 🔹 STEP 1: get total collected so far
-    total_collected = loan.total_collected
-
-    # 🔹 STEP 2: update PREVIOUS disbursement snapshot
-    last_disb = loan.disbursements.order_by('-created_at').first()
-    if last_disb:
-        last_disb.collected_till_now = total_collected
-        last_disb.save(update_fields=['collected_till_now'])
-
-    # 🔹 STEP 3: determine extension date (OPTIONAL)
-    extend_date = request.POST.get('extend_date')
-
-    if extend_date:
-        disbursed_at = timezone.make_aware(
-            datetime.combine(
-                datetime.strptime(extend_date, '%Y-%m-%d').date(),
-                timezone.localtime().time()
+        with db_transaction.atomic():
+            loan = Loan.objects.select_for_update().get(loan_code=form.cleaned_data['loan_code'])
+            _check_reference_length(f'Loan {loan.loan_code} - {loan.customer.name}')
+            total_collected = loan.total_collected
+            last_disb = loan.disbursements.select_for_update().order_by('-created_at', '-pk').first()
+            if last_disb:
+                last_disb.collected_till_now = total_collected
+                # The model guard refuses old disbursements without cash links.
+                last_disb.save(update_fields=['collected_till_now'])
+            principal = form.cleaned_data['add_amount']
+            LoanDisbursement.objects.create(
+                loan=loan, principal_amount=principal,
+                commission_percent=form.cleaned_data['commission_percent'],
+                collected_till_now=0, created_at=disbursed_at,
             )
-        )
-    else:
-        disbursed_at = timezone.now()
+    except Loan.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Loan not found.'})
+    except ValidationError as exc:
+        return JsonResponse({'success': False, 'message': _validation_text(exc)})
+    except DatabaseError:
+        logger.exception('Loan extension failed')
+        return JsonResponse({'success': False, 'message': 'Unable to extend the loan. No extension or snapshot change was saved.'})
+    return JsonResponse({'success': True, 'message': f'Loan {loan.loan_code} extended by ₹{principal}'})
 
-    # 🔹 STEP 4: create NEW disbursement
-    LoanDisbursement.objects.create(
-        loan=loan,
-        principal_amount=principal,
-        commission_percent=commission_percent,
-        collected_till_now=0,     # 👈 starts clean
-        created_at=disbursed_at   # ⭐ ONLY ADDITION
-    )
-
-    return JsonResponse({
-        'success': True,
-        'message': f'Loan {loan.loan_code} extended by ₹{principal}'
-    })
 
 
 def capital_history(request):
@@ -694,13 +621,21 @@ def repay_capital(request):
     if request.method == 'POST':
         form = CapitalRepaymentForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "💸 Capital repaid successfully!")
-            return redirect('repay_capital')
+            try:
+                with db_transaction.atomic():
+                    form.save()
+            except ValidationError as exc:
+                _form_problem(form, request, _validation_text(exc))
+            except DatabaseError:
+                logger.exception('Capital repayment failed')
+                _form_problem(form, request, 'Unable to save the capital repayment.')
+            else:
+                messages.success(request, '💸 Capital repaid successfully!')
+                return redirect('repay_capital')
     else:
         form = CapitalRepaymentForm()
-
     return render(request, 'FinanceApp/repay_capital.html', {'form': form})
+
 
 from openpyxl import Workbook
 from django.http import HttpResponse
@@ -755,52 +690,38 @@ def download_cash_passbook(request):
 
 
 def fund_transaction(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         form = FundTransactionForm(request.POST)
-
         if form.is_valid():
-
-            name = form.cleaned_data["fund_source_name"].strip()
-
-            fund_source = FundSource.objects.filter(
-                name__iexact=name
-            ).first()
-
-            if not fund_source:
-                fund_source = FundSource.objects.create(
-                    name=name
-                )
-
-            transaction = form.save(commit=False)
-            transaction.fund_source = fund_source
-
-            selected_date = form.cleaned_data["transaction_date"]
-
-            # If only a date was entered, combine it with the current time.
-            if isinstance(selected_date, date):
-                now = timezone.localtime()
-
-                transaction.transaction_date = timezone.make_aware(
-                    datetime.combine(selected_date, now.time())
-                )
+            try:
+                with db_transaction.atomic():
+                    name = form.cleaned_data['fund_source_name'].strip()
+                    # Serialize this view's received/repayment operations on an existing source.
+                    source = FundSource.objects.select_for_update().filter(name__iexact=name).first()
+                    kind = form.cleaned_data['transaction_type']
+                    if source is None:
+                        if kind == FundTransaction.REPAYMENT:
+                            raise ValidationError('Select an existing fund source for repayment.')
+                        source = FundSource.objects.create(name=name)
+                    if kind == FundTransaction.REPAYMENT:
+                        outstanding = source.outstanding
+                        if form.cleaned_data['amount'] > outstanding:
+                            raise ValidationError(f'Outstanding is only ₹{outstanding:,.2f}')
+                    fund_entry = form.save(commit=False)
+                    fund_entry.fund_source = source
+                    fund_entry.save()
+            except ValidationError as exc:
+                _form_problem(form, request, _validation_text(exc))
+            except DatabaseError:
+                logger.exception('Fund transaction recording failed')
+                _form_problem(form, request, 'Unable to save the fund transaction. No part of this operation was saved.')
             else:
-                transaction.transaction_date = selected_date
-
-            transaction.save()
-
-            messages.success(request, "Fund transaction recorded successfully.")
-            return redirect("fund_transaction")
-
+                messages.success(request, 'Fund transaction recorded successfully.')
+                return redirect('fund_transaction')
     else:
         form = FundTransactionForm()
+    return render(request, 'FinanceApp/fund_transaction.html', {'form': form})
 
-    return render(
-        request,
-        "FinanceApp/fund_transaction.html",
-        {
-            "form": form,
-        },
-    )
 
 
 def search_fund_source(request):
@@ -852,3 +773,32 @@ def fund_ledger_detail(request, pk):
             "transactions": transactions,
         },
     )
+
+def _validation_text(exc):
+    return ' '.join(exc.messages)
+
+
+
+def _form_problem(form, request, text):
+    form.add_error(None, text)
+    messages.error(request, text)
+
+
+
+def _json_form_errors(form):
+    details = form.errors.get_json_data()
+    text = ' '.join(
+        f'{name}: {item["message"]}' for name, items in details.items() for item in items
+    )
+    return JsonResponse({'success': False, 'message': text, 'errors': details})
+
+
+
+def _check_reference_length(text):
+    limit = CashTransaction._meta.get_field('reference').max_length
+    if len(text) > limit:
+        raise ValidationError(
+            f'The generated cash reference exceeds {limit} characters. '
+            'Shorten the customer name or expense description before saving.'
+        )
+
