@@ -172,15 +172,52 @@ $(document).ready(function() {
         return;
       }
 
-      let total = data.collections.reduce((sum, c) => sum + c.amount_collected, 0);
+      // Calculate in paise to avoid decimal rounding errors.
+      const amountInPaise = c =>
+        Math.round(Number(c.amount_collected) * 100);
+
+      const formatMoney = paise =>
+        (paise / 100).toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+
+      const totalPaise = data.collections.reduce(
+        (sum, c) => sum + amountInPaise(c), 0
+      );
+
+      // Collections arrive newest first.
+      let runningPaise = totalPaise;
+
       let html = `<div class="mt-3 px-4">
           <h6>📅 Collections for Loan ${loanCode}</h6>
-          <p><b>Total Collected:</b> ₹${total.toFixed(2)} (${data.total_entries} entries)</p>
+          <p>
+            <b>Total Collected:</b>
+            ₹${formatMoney(totalPaise)} (${data.total_entries} entries)
+          </p>
           <table class="table table-sm table-striped text-center align-middle">
-            <thead><tr><th>Date</th><th>Amount (₹)</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount (₹)</th>
+                <th>Total Collected Till Then (₹)</th>
+              </tr>
+            </thead>
             <tbody>`;
+
       data.collections.forEach(c => {
-        html += `<tr><td>${c.collection_date}</td><td>₹${c.amount_collected.toFixed(2)}</td></tr>`;
+        const amountPaise = amountInPaise(c);
+
+        html += `
+          <tr>
+            <td>${c.collection_date}</td>
+            <td>₹${formatMoney(amountPaise)}</td>
+            <td class="fw-bold text-success">
+              ₹${formatMoney(runningPaise)}
+            </td>
+          </tr>`;
+
+        runningPaise -= amountPaise;
       });
       html += `</tbody></table></div>`;
       $('#collectionsBox').html(html);
