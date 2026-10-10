@@ -477,12 +477,6 @@ class FundTransaction(models.Model):
     @atomic_cash_save("fund_transaction")
     def save(self, *args, **kwargs):
 
-        if self.transaction_date:
-            self.transaction_date = datetime.combine(
-                self.transaction_date.date(),
-                time.min
-            )
-
         super().save(*args, **kwargs)
 
         # Read persisted values so update_fields and database rounding stay consistent.

@@ -169,8 +169,13 @@ class FundTransactionForm(PositiveAmountMixin, forms.ModelForm):
                   'amount': 'Amount', 'payment_mode': 'Payment Mode', 'transaction_date': 'Date', 'notes': 'Notes'}
 
     def clean_transaction_date(self):
-        # Preserve the model's existing business-date-at-midnight convention.
-        return timezone.make_aware(datetime.combine(self.cleaned_data['transaction_date'], datetime.min.time()))
+        # Selected date + current local time.
+        return timezone.make_aware(
+            datetime.combine(
+                self.cleaned_data['transaction_date'],
+                timezone.localtime().time(),
+            )
+        )
 
     def clean(self):
         cleaned = super().clean()
